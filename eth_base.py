@@ -154,10 +154,6 @@ class Block:
     def __update(cls):
         cls.counter += 1
 
-#    @classmethod
-#    def get_instances(cls):
-#        return cls.instances
-
     def __init__(self, emitter = "genesis", parent = None):
 
         self.id = self.counter
@@ -170,16 +166,27 @@ class Block:
             self.parent = None
             self.height = 0
             self.emitter = "genesis"
+            self.predecessors = {self}
 
         else:
             self.parent = parent
             self.height = self.parent.height + 1
             self.emitter = emitter
             parent.children.add(self)
-            #self.nodes = {emitter}
+            self.predecessors = parent.predecessor.add(self)
+        
+        while block:
+            self.predecessors.add(block)
+            block = block.parent
             
     def __repr__(self):
         return '<Block {} (h={})>'.format(self.id, self.height)
+    
+    def __next__(self):
+        if self.parent:
+            return self.parent
+        else:
+            raise StopIteration
    
 class Node:
     '''
@@ -243,6 +250,8 @@ class Node:
     def listen(self, gossiping_node):
         block = gossiping_node.current_block 
         
+
+        #Need to change this
         if block.height > self.current_block.height:           
                 
             self.current_block = gossiping_node.current_block
@@ -297,21 +306,20 @@ class Model:
         self.network = Network(graph) 
         self.N = len(self.network)
 
-        self.miners = [Node(blockchain = self.blockchain.copy()
+        self.nodes = [Node(blockchain = self.blockchain.copy()
                             )
                       for i in range(self.N)]
 
         self.network.set_neighborhood(self.nodes)
 
-        self.gillespie = Gillespie(mempool = self.mempool,
-                                   nodes = self.nodes,
+        self.gillespie = Gillespie(nodes = self.nodes,
                                    blockchain = self.blockchain,
                                    network = self.network,
                                    tau_block = self.tau_block,
                                    tau_attest = self.tau_attest,
                                   ) 
         
-class Message():
+class Message:
     __slots__=('attestation', 'recipient')
 
     def __init__(self, attestation, recipient):
@@ -330,7 +338,7 @@ class Message():
     def __repr__(self):
         return '<Message: {} for recipient {}>'.format(str(self.attestation).strip('<>'), self.recipient.id)
         
-class Attestation():
+class Attestation:
     __slots__=('attestor','block')
     
     def __init__(self, attestor, block):
@@ -349,7 +357,7 @@ class Attestation():
     def __repr__(self):
         return '<Attestation: Block {} by node {}>'.format(self.block.id, self.attestor.id)
                   
-class AttestationsData():
+class AttestationsData:
     
     def __init__(self, node):
         self.node = node
@@ -369,7 +377,6 @@ class AttestationsData():
         '''
         if not attestation.block in self.node.local_blockchain:
             self.attestations_cache.add(attestation)
-            print('where')
             return False
         
         elif attestation.attestor not in self.attestations.keys():
@@ -417,6 +424,74 @@ class AttestationsData():
                     clear_cache.add(a)
                     self.attestations.update(a.as_dict())
             self.attestations_cache = self.attestations_cache - clear_cache
+
+'''
+FUNCTIONS
+'''
+'''
+LMD Ghost following functions handle LMD Ghost Evaluation of Blocks
+'''
+
+def find_leaves_of_blockchain(blockchain):
+    parent_blocks = {b.parent for b in blockchain}
+    return blockchain - parent_blocks
+
+def lmd_ghost(blockchain, attestations, eval = simple_attestation_evaluation):
+    #identify leaf blocks
+    leaves = find_leaves_of_blockchain(blockchain)
+    if len(leaves)==1:
+        return leaves.pop()
+    #invert attestations: from node:block to block:[nodes]
+    inverse_attestations= {}
+    for n, b in attestations.items():
+        inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
+
+    attested_blocks = set(inverse_attestations.keys())
+
+    lowest_attestation = next(iter(attested_blocks))
+    for b in attested_blocks:
+        if b.height < lowest_attestation.height:
+            lowest_attestation = b
+
+    cut_trees_per_leave = {b:b.predecessors - lowest_attestation.predecessors for b in leaves}
+    attested_blocks = set(inverse_attestations.keys())
+    attested_blocks_per_leave = {b: cut_trees_per_leave[b] & attested_blocks for b in leaves}
+    attestations_per_leave = {b:[inverse_attestations[x] for x in attested_blocks_per_leave[b]] for b in leaves}
+
+    sum_attestations_per_leave = {b:sum([eval(n) for n in attestations_per_leave[b]])}
+    return max(sum_attestations_per_leave, key=attestations_per_leave.get)
+
+
+def simple_attestation_evaluation(n):
+    return 1
+
+def stake_attestation_evaluation(n):
+    pass
+
+def blockchain_to_digraph(blockchain):
+    leaves = find_leaves_of_blockchain(blockchain)
+
+    d = {}
+    for l in leaves:
+        b=l
+        while b:
+            d[b]={b.parent}
+            b = b.parent
+            if b in d.keys():
+                break
+
+    return nx.from_dict_of_dicts(d, create_using=nx.DiGraph)
+
+def blockchain_layout(blockchain_digraph):
+    #get max height
+    #get start block
+    #add to left for each height 
+    for b in blockchain_digraph.nodes()
+
+    
+
+
+    
                     
                 
 
