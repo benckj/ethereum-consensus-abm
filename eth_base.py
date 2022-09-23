@@ -4,13 +4,14 @@ import numpy as np
 
 class Gillespie:
     '''
-    The Gillespie class combines all the different 
-    classes to a single model. It combines processes, and structural properties into one single model.
-    
+    The Gillespie class combines all the different classes to a single model.
+    ONce it ran, you can parse the resulting objects which are: Gillespie.nodes, Gillespie.blockchain.
     INPUT:
-    - nodes         - A list of Node objects
-    - blockchain    - A list of Block object, contain genesis block upon initiating
-    - network       - A Network object (which stores the network on which miners interact) (Not necessarily needed)
+    - nodes         - list of Node objects
+    - blockchain    - list of Block objects, contains only genesis block upon initiating
+    - network       - Network object (which stores the network on which miners interact) (Not necessarily needed)
+    - tau_block     - float, block gossip latency
+    - tau_attest    - float, attestation gossip latency
     '''
     def __init__(self, nodes, blockchain, network, tau_block = 1, tau_attest = 0.1):
         
@@ -258,23 +259,33 @@ class Node:
         return '<Node {}>'.format(self.id)
                 
 class Network:
+    """Object to manage the peer-to-peer network. It is a wrapper of networkx.Graph right now.
+    INPUT
+    - G,    a networkx.Graph object
+    """
     
     import networkx as nx
     
     def __init__(self, G):
+        # G is a networkx Graph
         self.network = G
+        #TODO: remove lcc..
         lcc_set = max(nx.connected_components(self.network), key=len)
         self.network = self.network.subgraph(lcc_set).copy()
         
     def __len__(self):
         return len(self.network)
             
+    #TODO: nodes -> peers
     def set_neighborhood(self, nodes):
+        # dict map nodes in the nx.graph to nodes on p2p network
         nodes_dict = dict(zip(self.network.nodes(), nodes))
+        # save peer node object as an attribute of nx node
         nx.set_node_attributes(self.network, values = nodes_dict, name='node')
 
         for n in self.network.nodes():
             m = self.network.nodes[n]["node"]
+            # save each neighbour in the nx.Graph inside the peer node object
             for k in self.network.neighbors(n):
                 m.neighbors.add(self.network.nodes[k]["node"])    
 
