@@ -27,56 +27,62 @@ class Gillespie:
         self.lambda_sum = np.sum(self.lambdas)
         
         self.network = network
-        
+        #TODO: change to 12
         self.propose_time = 8
         self.attest_time = 4
 
     def update_lambdas(self):
-        '''
-        Lambdas are recauculated after each time increment
+        '''Lambdas are recauculated after each time increment
         '''
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
 
     def increment_time(self):
+        '''Function to generate the random time increment from an exponential random distribution.
         '''
-        Function to increment time
-        '''
+        #TODO: add a rng in the init and pass it to all random functions.
         self.increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
         #self.time += self.increment
 
     def trigger_event(self):
+        '''Selects the next process according to its weight and it executes the related event.
         '''
-        Selects a process according to their weights and executes its event
-        '''
+        #TODO: add RNG
         select_process = rnd.choices(population = self.processes, weights = self.lambdas, k = 1)[0]
         select_process.event()
         
     def proposal(self):
+        #TODO: implement w/ commitee, slots, epochs
         pass
 
-    def run(self, stoping_time):       
-        '''
-        Runs the model for a given stoping time
+    def run(self, stopping_time):       
+        '''Runs the model for a given stopping time.
         '''
         self.last_propose = 0
         self.last_attest = 0
         self.attestation_window = True
         
-        while self.time < stoping_time:
+        while self.time < stopping_time:
 
-            #self.update_lambdas()
+            # self.update_lambdas()
+            # generate next random increment time and save it in self.increment
+            #TODO: naming is misleading. Change increment)_time() name.
             self.increment_time()
             
+            # compute and execute number of proposal events vefore next random event.
             time_since_propose_event = ((self.time + self.increment) - self.last_propose)
+            # execute all propose events before next random event
             for i in range(int(time_since_propose_event//self.propose_time)):
+                # tell the nodes the new slot started and they have to attest
                 if i == 0:
                     for n in self.nodes:
-                        n.is_attesing = True
+                        n.is_attesting = True
                 proposer = rnd.choice(self.nodes)
+                #TODO: mine->propose
                 proposer.mine_block()
                 self.last_propose += self.propose_time
-            
+                
+            # compute and execute number of proposal events before next random event.            
             time_since_attest_event = ((self.time + self.increment) - self.last_attest)
             for i in range(int(time_since_attest_event//self.attest_time)):
                 self.attestation_window = not self.attestation_window
@@ -86,16 +92,19 @@ class Gillespie:
                         
                     n.is_attesting = self.attestation_window
                     self.last_attest += self.attest_time
-                
+                    
+            # trigger the random event
             self.trigger_event()
+            # update time
             self.time += self.increment
             print(self.time)
             
         return 
 
 class Process:
-    '''
-    Parent class for processes
+    '''Parent class for processes. 
+    INPUT:
+    - tau,  float, the latency
     '''
     def __init__(self, tau):
         self.__tau = tau
@@ -118,19 +127,29 @@ class Process:
         pass
     
 class BlockGossipProcess(Process):
+    """The process to manage block gossiping
+    INPUT:
+    - nodes,    list of Nodes obejct
+    - tau,      float, process latency
+    """
     
     def __init__(self, tau, nodes):
         super().__init__(tau)
         self.nodes = nodes
         
     def event(self):
+        #TODO: from nodes sampling to edges sampling
         gossiping_node = rnd.choice(self.nodes)
         listening_node = rnd.choice(list(gossiping_node.neighbors))
         gossiping_node.gossip(listening_node)
         return
     
 class AttestationGossipProcess(Process):
-
+    """The process to manage attestation gossiping
+    INPUT:
+    - nodes,    list of Nodes obejct
+    - tau,      float, process latency
+    """
     def __init__(self, tau, nodes):
         super().__init__(tau)
         self.nodes = nodes
@@ -183,13 +202,10 @@ class Block:
         return '<Block {} (h={})>'.format(self.id, self.height)
    
 class Node:
-    '''
-    Class for Miners
+    '''Class for the validator.
     
     INPUT:
-    emitter          - List of miner objects
-    parent           - Block object (parent of the block)
-    transactions     - Number (integer) of transactions in the block
+    - blockchain,   list of Block objects,
     '''
     counter = 0
 
@@ -204,56 +220,63 @@ class Node:
         self.local_blockchain = {blockchain[0]}
         self.global_blockchain = blockchain
         self.current_block = blockchain[0] # A Blockchain has to be initialized
-        #self.own_blocks = set() # Keeps track blocks mined by this node in order to evaluate strategy
-        
-        self.neighbors = set()
-        self.non_gossiped_to = set()
+        self.neighbors = set()  # set of neighbours peers on the p2p network
+        self.non_gossiped_to = set()  # set of neighbour peers self.Node didn't gossip to
         
         self.attestations = AttestationsData(self)
         self.is_attesting = True
         
+    #TODO: mine->propose
     def mine_block(self):
         self.current_block = Block(self, self.current_block)
-        print('Hurra! {} was proposed.'.format(self.current_block))
+        # debug
+        # print('Huzza! {} was proposed.'.format(self.current_block))
         
         self.local_blockchain.add(self.current_block)
         self.global_blockchain.append(self.current_block)
         
-        #self.own_blocks.add(self.current_block)
+        # tracks the neighbours self.Node didnt gossip
         self.non_gossiped_to = self.neighbors.copy()
-        
+        #TODO: remove
         self.attestations.attest() 
         return
         
     def is_gossiping(self):
+        """If the set of nodes self.Node hasnt gossiped to it's empty,
+        self.Node doesn't need to gossip anymore then self.is_gossiping it's False.
+        """
         if self.non_gossiped_to:
             return True
         else:
             return False
     
     def update_local_blockchain(self, block):
+        """When self.Node receive a new block, update the local copy of the blockchain.
+        """
         while block not in self.local_blockchain:
             self.local_blockchain.add(block)
             self.attestations.check_cache(block)
-            block = block.parent           
-
+            block = block.parent 
+            
+    #TODO: gossip blocks, naming should be changed accordingly
     def gossip(self, listening_node):
         #self.non_gossiped_to.remove(listening_node)
         listening_node.listen(self)
-        
+
+    #TODO: listen blocks, naming should be changed accordingly
     def listen(self, gossiping_node):
+        """Receive new block and update local information accordingly.
+        """
         block = gossiping_node.current_block 
-        
-        if block.height > self.current_block.height:           
-                
-            self.current_block = gossiping_node.current_block
-            self.update_local_blockchain(self.current_block)
-            #self.current_block.nodes.add(self)
-            self.non_gossiped_to = self.neighbors.copy()
-            self.non_gossiped_to.remove(gossiping_node)
-            
-            if self.is_attesting == True:
-                self.attestations.attest()
+
+        self.current_block = gossiping_node.current_block
+        self.update_local_blockchain(self.current_block)
+        #self.current_block.nodes.add(self)
+        self.non_gossiped_to = self.neighbors.copy()
+        self.non_gossiped_to.remove(gossiping_node)
+
+        if self.is_attesting == True:
+            self.attestations.attest()
    
     def __repr__(self):
         return '<Node {}>'.format(self.id)
@@ -290,10 +313,9 @@ class Network:
                 m.neighbors.add(self.network.nodes[k]["node"])    
 
 class Model:
-    '''
-    Initiates the model and builds it around the parameters given
+    '''Initiates the model and builds it around the parameters given
     model.gillespie.run to run the simulation.
-    All objects are contained in the class
+    All objects are contained in the class.
     '''
     def __init__(self,
                  graph = None,
@@ -307,22 +329,27 @@ class Model:
         self.blockchain = [Block()]
         self.network = Network(graph) 
         self.N = len(self.network)
-
-        self.miners = [Node(blockchain = self.blockchain.copy()
+        
+        self.nodes = [Node(blockchain = self.blockchain.copy()
                             )
                       for i in range(self.N)]
 
         self.network.set_neighborhood(self.nodes)
 
-        self.gillespie = Gillespie(mempool = self.mempool,
+        self.gillespie = Gillespie(
                                    nodes = self.nodes,
                                    blockchain = self.blockchain,
                                    network = self.network,
                                    tau_block = self.tau_block,
                                    tau_attest = self.tau_attest,
                                   ) 
-        
+#TODO:         
 class Message():
+    """It wraps attestation with respective recipient.
+    INPUTS:
+    - attestation,  Attestation object
+    - reciptient,   Node object
+    """
     __slots__=('attestation', 'recipient')
 
     def __init__(self, attestation, recipient):
@@ -342,6 +369,12 @@ class Message():
         return '<Message: {} for recipient {}>'.format(str(self.attestation).strip('<>'), self.recipient.id)
         
 class Attestation():
+    """It wraps a block to a node. In the context of attestation, 
+    the block is the attested block and the node is the attestor.
+    INPUTS:
+    - attestor,  Node object
+    - block,     Block object
+    """
     __slots__=('attestor','block')
     
     def __init__(self, attestor, block):
@@ -359,37 +392,50 @@ class Attestation():
 
     def __repr__(self):
         return '<Attestation: Block {} by node {}>'.format(self.block.id, self.attestor.id)
-                  
+
+    
 class AttestationsData():
+    """It manages and saves attestations for a node.
+    INPUTS:
+    - node,     a Node object
+    """
     
     def __init__(self, node):
         self.node = node
-        self.attestations = {}
-        self.message_queue= set()
-        self.attestations_cache = set()
+        self.attestations = {}  # Node:Block
+        self.message_queue= set()  # Message
+        self.attestations_cache = set()  # Attestation
          
     def attest(self):
+        """Create the Attestation for the current head of the chain block.
+        """
         attestation = Attestation(self.node, self.node.current_block)
         
         self.update_attestations(attestation)
-        self.add_to_message_queue(attestation)
+        self.add_to_message_queue(attestation)  # init to send it out
         
     def update_attestations(self, attestation):
+        '''Excepts an attestation object which is passed and then processed further.
+        INPUTS:
+        - attestation,  Attestation object
+        OUTPUT:
+        - Bool, wheter or not the update takes place or not
         '''
-        Excepts an attestation object which is passed and then processed further
-        '''
+        # if node doesn't know the block the attestation is about, cache it
         if not attestation.block in self.node.local_blockchain:
             self.attestations_cache.add(attestation)
-            print('where')
+            # debug
+            # print('where')
             return False
-        
+        # first time node receives attestation from specific attestor
         elif attestation.attestor not in self.attestations.keys():
             self.attestations[attestation.attestor]=attestation.block
             return True
-            
+        # node updates local latest attestation of the attestor  
         elif attestation.attestor in self.attestations.keys():
             if attestation.block.id > self.attestations[attestation.attestor].id: 
-                #precaution block id used instead of block slot since lmd
+                #TODO: precaution block id used instead of block slot since lmd
+                #TODO: epoch is the attestation timestamp-> use epoch
                 self.attestations.update(attestation.as_dict())
                 return True
         else:
@@ -400,6 +446,7 @@ class AttestationsData():
             self.message_queue.add(Message(attestation, n))
             
     def select_attestation_message(self):
+        #TODO: add rng
         s = rnd.choice(list(self.message_queue))
         return s
         
@@ -407,25 +454,34 @@ class AttestationsData():
         if len(self.message_queue)>0:
             message = self.select_attestation_message()
             self.message_queue.remove(message)
-            print(str(self.node) + '  - sending ->  ' + str(message))
+            # debug
+            # print(str(self.node) + '  - sending ->  ' + str(message))
             
             message.recipient.attestations.receive_attestation(self, message)
              
     def receive_attestation(self, other, message):
         attestation = message.attestation
-        
-        print(str(self.node) + '   <- receiving -  ' + str(message))
+        # debug
+        # print(str(self.node) + '   <- receiving -  ' + str(message))
         
         if self.update_attestations(attestation):
             self.add_to_message_queue(attestation)
             
     def check_cache(self, block):
+        """Manage the cache after receiving a new block.
+        If the block was cached, removes all attestations related to 
+        the block from the cache and update local attestations.
+        When the node receive a block he alreaqdy had attestations for
+        the node needs to update the cache.
+        """
+        # create set of blocks in the cache
         cached_blocks = set([a.block for a in self.attestations_cache])
         if block in cached_blocks:
             clear_cache = set()
             for a in self.attestations_cache:
                 if a.block == block:
                     clear_cache.add(a)
+                    #TODO: use update_attestations()
                     self.attestations.update(a.as_dict())
             self.attestations_cache = self.attestations_cache - clear_cache
                     
