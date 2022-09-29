@@ -1,5 +1,3 @@
-
-#TODO:         
 class Message():
     """It wraps attestation with respective recipient.
     INPUTS:
