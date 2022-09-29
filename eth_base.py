@@ -345,7 +345,7 @@ class Model:
                                    tau_attest = self.tau_attest,
                                   ) 
 
-    def results():
+    def results(self):
         d = {"test": 1}
         return d
 

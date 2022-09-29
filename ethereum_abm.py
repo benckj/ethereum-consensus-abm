@@ -88,7 +88,7 @@ def run_simulation(parameters):
     OUTPUTS:
     - results,  dict
     """
-    model = Model.gillespie(
+    model = Model(
             graph=__set_up_topology(parameters),
             tau_block=parameters['tau_block'],
             tau_attest=parameters['tau_attestation']

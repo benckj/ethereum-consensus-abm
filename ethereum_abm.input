@@ -6,4 +6,4 @@ p_sw:type=float:default=0::help=small world rewiring prob
 p_sbm_inter:type=float:default=0:label=$p_{\alpha}$:help=stochastic block model  probability a link is inter-block
 tree_r:type=int:default=2:help=tree parameter branching rate
 tau_block:type=float:default=1.:label=$\tau_{m}$:help=time consumed to gossip a block between 2 nodes
-tau_attest:type=float:default=0.01:label=$\tau_{nd}$:help=time consumed to gossip an attestation between two nodes
+tau_attestation:type=float:default=0.01:label=$\tau_{nd}$:help=time consumed to gossip an attestation between two nodes

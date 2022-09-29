@@ -1,9 +1,7 @@
 @execute ethereum_abm.py
-:hashing_power_distrib EXPONENTIAL
 :network_topology ER 
-:simulating_time 2e4
-:exp_lambda 0.05
+:simulation_time 2e2
 .no_neighs 3
 .no_nodes 40
-*tau_block .1 2 1.04 
-*tau_attestation .1 2 1.04 
++tau_block 1 2 .5
+*tau_attestation 1 2 1.5 
