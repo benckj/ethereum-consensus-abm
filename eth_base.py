@@ -101,6 +101,7 @@ class Gillespie:
             
         return 
 
+
 class Process:
     '''Parent class for processes. 
     INPUT:
@@ -343,6 +344,11 @@ class Model:
                                    tau_block = self.tau_block,
                                    tau_attest = self.tau_attest,
                                   ) 
+
+    def results():
+        d = {"test": 1}
+        return d
+
 #TODO:         
 class Message():
     """It wraps attestation with respective recipient.

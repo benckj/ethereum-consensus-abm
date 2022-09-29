@@ -1,0 +1,9 @@
+simulation_time:type=float:default=5e3:help=number of seconds (synthetic) of the simulation
+network_topology:type=str:categories=["UNIFORM","ER","BA","SW","SBM", "TREE" ]::help=Network topology
+no_nodes:type=int:default=100::label=$N$:help=number of nodes in the network
+no_neighs:type=int:default=8:label=$k$:help=degree of each node
+p_sw:type=float:default=0::help=small world rewiring prob
+p_sbm_inter:type=float:default=0:label=$p_{\alpha}$:help=stochastic block model  probability a link is inter-block
+tree_r:type=int:default=2:help=tree parameter branching rate
+tau_block:type=float:default=1.:label=$\tau_{m}$:help=time consumed to gossip a block between 2 nodes
+tau_attest:type=float:default=0.01:label=$\tau_{nd}$:help=time consumed to gossip an attestation between two nodes
