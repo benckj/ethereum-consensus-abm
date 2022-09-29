@@ -1,0 +1,7 @@
+@execute ethereum_abm.py
+:network_topology ER 
+:simulation_time 2e2
+.no_neighs 3
+.no_nodes 40
++tau_block 1 2 .5
+*tau_attestation 1 2 1.5 
