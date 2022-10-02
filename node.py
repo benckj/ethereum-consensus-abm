@@ -1,4 +1,4 @@
-from attestation import AttestationsData
+from utils.attestation import AttestationsData
 
 class Node:
     '''Class for the validator.

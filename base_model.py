@@ -1,5 +1,10 @@
 import numpy as np
-from utils import *
+import networkx as nx
+from utils.attestation import *
+from utils.block import *
+from utils.network import *
+from node import *
+from utils.process import *
 
 
 class Gillespie:
@@ -146,3 +151,16 @@ class Model:
         d = {"test": 1}
         return d
 
+
+if __name__ == "__main__":
+    net_p2p = nx.random_degree_sequence_graph(
+        [3 for i in range(40)])
+    lcc_set = max(nx.connected_components(net_p2p), key=len)
+    net_p2p = net_p2p.subgraph(lcc_set).copy()
+    net_p2p = nx.convert_node_labels_to_integers(
+        net_p2p, first_label=0)
+    model = Model(
+        graph=net_p2p
+    )
+    model.gillespie.run(2e2)
+    model.results()
