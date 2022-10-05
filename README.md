@@ -1,7 +1,7 @@
 # EthereumPOS
 
-## running pyspg
-To syntax to run an experiment:
+## running pyspg example
+The syntax to run an experiment:
 ```
 python3 ethereum_abm.py --repeat=5 --workers=32 main.spg
 ```
