@@ -13,23 +13,27 @@ class Gillespie:
     - tau_block     - float, block gossip latency
     - tau_attest    - float, attestation gossip latency
     '''
-    def __init__(self, nodes, blockchain, network, tau_block = 1, tau_attest = 0.1):
+    def __init__(self, nodes, blockchain, validators, network, tau_block = 1, tau_attest = 0.1):
         
         self.time = 0
         self.blockchain = blockchain
-        self.nodes = nodes 
+        self.nodes = nodes
+        self.validators = validators
         
         self.block_gossip_process = BlockGossipProcess(tau = tau_block, nodes = nodes)
         self.attestation_gossip_process = AttestationGossipProcess(tau = tau_attest, nodes = nodes)
-
+        
+        self.epoch_boundary = EpochBoundary(32*12, self.validators)
+        self.slot_boundary = SlotBoundary(12, self.validators, self.epoch_boundary)
+        self.attestation_boundary = AttestationBoundary(12, offset = 4, validators = self.validators)
+        
         self.processes = [self.block_gossip_process, self.attestation_gossip_process]
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
         
+        self.fixed_events = [self.epoch_boundary, self.slot_boundary, self.attestation_boundary]
+        
         self.network = network
-        #TODO: change to 12
-        self.propose_time = 8
-        self.attest_time = 4
 
     def update_lambdas(self):
         '''Lambdas are recauculated after each time increment
@@ -37,12 +41,12 @@ class Gillespie:
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
 
-    def increment_time(self):
+    def calculate_time_increment(self):
         '''Function to generate the random time increment from an exponential random distribution.
         '''
         #TODO: add a rng in the init and pass it to all random functions.
-        self.increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
-        #self.time += self.increment
+        increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
+        return increment
 
     def trigger_event(self):
         '''Selects the next process according to its weight and it executes the related event.
@@ -50,24 +54,27 @@ class Gillespie:
         #TODO: add RNG
         select_process = rnd.choices(population = self.processes, weights = self.lambdas, k = 1)[0]
         select_process.event()
-        
-    def proposal(self):
-        #TODO: implement w/ commitee, slots, epochs
-        pass
 
-    def run(self, stopping_time):       
+    def run(self, stoping_time):       
         '''Runs the model for a given stopping time.
         '''
-        self.last_propose = 0
-        self.last_attest = 0
-        self.attestation_window = True
-        
-        while self.time < stopping_time:
+        while self.time < stoping_time:
 
-            # self.update_lambdas()
             # generate next random increment time and save it in self.increment
-            #TODO: naming is misleading. Change increment)_time() name.
-            self.increment_time()
+            increment = self.calculate_time_increment()
+            print('{:.2f}---->{:.2f}'.format(self.time, self.time + increment))
+            
+            # loop over fixed and trigger if time passes fixed event time
+            for fixed in self.fixed_events:
+                fixed.trigger(self.time + increment)
+            
+            # select poisson process and trigger selected process
+            self.trigger_event()
+            self.time += increment
+            
+        return 
+
+
             
             # compute and execute number of proposal events vefore next random event.
             time_since_propose_event = ((self.time + self.increment) - self.last_propose)
@@ -159,6 +166,81 @@ class AttestationGossipProcess(Process):
         gossiping_node = rnd.choice(self.nodes)
         gossiping_node.attestations.send_attestation_message()
         return
+
+class FixedTimeEvent():
+    def __init__(self, interval,time=0, offset=0):
+        if not offset >= 0:
+            raise ValueError("Interval must be positive")
+            
+        self.offset = offset
+        self.interval = interval
+        
+        self.last_event = None
+        self.next_event = time + self.offset
+        
+        self.counter = 0
+        
+    def trigger(self, next_time):
+        while next_time > self.next_event:
+            self.event()
+            self.counter += 1
+            self.next_event += self.interval
+            
+            return True
+        return False
+    
+    def event(self):
+        pass
+
+class SlotBoundary(FixedTimeEvent):
+    def __init__(self, interval, validators, epoch_boundary):
+        super().__init__(interval)
+        self.validators = validators
+        self.epoch_boundary = epoch_boundary
+
+    def event(self):
+                
+        for v in self.epoch_boundary.committees[self.counter // self.epoch_boundary.slots_per_epoch]:
+            v.is_attesting = True
+            
+        proposer = rng.choice(self.validators)
+        proposer.propose_block()
+
+        print('Block proposed')
+        
+class EpochBoundary(FixedTimeEvent):
+    def __init__(self, interval, validators):
+        super().__init__(interval)
+        self.validators = validators
+        self.committees = []
+        
+        self.slots_per_epoch = 32
+        self.v_n = len(self.validators)
+        self.committee_size = int(self.v_n/self.slots_per_epoch)
+        self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
+        
+    def event(self):
+        rng.shuffle(self.validators)
+        self.committees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)] 
+                           for c in range(self.slots_per_epoch)]
+        
+        j = rng.shuffle(list(range(self.slots_per_epoch)))
+        for i in range(1, self.leftover+1):
+            self.commitees[j[i-1]].append(self.validators[-i])
+            
+        print('New Epoch: Committees formed')
+
+        
+class AttestationBoundary(FixedTimeEvent):
+    def __init__(self, interval, offset, validators):
+        super().__init__(interval, offset)
+        self.validators = validators
+        
+    def event(self):
+        for v in self.validators:
+            if v.is_attesting == True:
+                v.attestations.attest()
+                print('Attestor reporting')
 
 class Block:
     '''
@@ -509,30 +591,41 @@ def find_leaves_of_blockchain(blockchain):
     parent_blocks = {b.parent for b in blockchain}
     return blockchain - parent_blocks
 
-def lmd_ghost(blockchain, attestations, eval = simple_attestation_evaluation):
-    #identify leaf blocks
+def lmd_ghost(blockchain, attestations, stake=uniform_stake):
     leaves = find_leaves_of_blockchain(blockchain)
     if len(leaves)==1:
         return leaves.pop()
-    #invert attestations: from node:block to block:[nodes]
+
     inverse_attestations= {}
     for n, b in attestations.items():
         inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
 
     attested_blocks = set(inverse_attestations.keys())
-
+    if len(attested_blocks)==0:
+        return next(iter(blockchain))
+    
     lowest_attestation = next(iter(attested_blocks))
     for b in attested_blocks:
         if b.height < lowest_attestation.height:
             lowest_attestation = b
+            
+    if lowest_attestation.height == 0:
+        cut_trees_per_leave = {b:b.predecessors for b in leaves}
+    else:
+        cut_trees_per_leave = {b:b.predecessors - lowest_attestation.parent.predecessors for b in leaves}
 
-    cut_trees_per_leave = {b:b.predecessors - lowest_attestation.predecessors for b in leaves}
-    attested_blocks = set(inverse_attestations.keys())
-    attested_blocks_per_leave = {b: cut_trees_per_leave[b] & attested_blocks for b in leaves}
-    attestations_per_leave = {b:[inverse_attestations[x] for x in attested_blocks_per_leave[b]] for b in leaves}
+    attested_blocks_per_leaf = {b: cut_trees_per_leave[b] & attested_blocks for b in leaves}
+    attested_blocks_per_leaf = {b: n for b, n in attested_blocks_per_leaf.items() if n}
+    if attested_blocks_per_leaf.keys()==1:
+        return next(iter(attested_blocks_per_leaf.keys()))
 
-    sum_attestations_per_leave = {b:sum([eval(n) for n in attestations_per_leave[b]])}
-    return max(sum_attestations_per_leave, key=attestations_per_leave.get)
+    leaves_with_attestations = set(attested_blocks_per_leaf.keys())
+
+    attestations_per_leaf  = {b:[inverse_attestations[x] for x in attested_blocks_per_leaf[b]] for b in leaves_with_attestations}
+    attestations_per_leaf  = {b:[node for nodes in n for node in nodes] for b,n in attestations_per_leaf.items()}
+
+    sum_attestations_per_leaf = {b:sum([uniform_stake(n) for n in attestations_per_leaf[b]]) for b in leaves_with_attestations}
+    return max(sum_attestations_per_leaf, key=sum_attestations_per_leaf.get)
 
 
 def simple_attestation_evaluation(n):
