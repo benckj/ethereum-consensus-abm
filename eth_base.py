@@ -75,40 +75,6 @@ class Gillespie:
         return 
 
 
-            
-            # compute and execute number of proposal events vefore next random event.
-            time_since_propose_event = ((self.time + self.increment) - self.last_propose)
-            # execute all propose events before next random event
-            for i in range(int(time_since_propose_event//self.propose_time)):
-                # tell the nodes the new slot started and they have to attest
-                if i == 0:
-                    for n in self.nodes:
-                        n.is_attesting = True
-                proposer = rnd.choice(self.nodes)
-                #TODO: mine->propose
-                proposer.mine_block()
-                self.last_propose += self.propose_time
-                
-            # compute and execute number of proposal events before next random event.            
-            time_since_attest_event = ((self.time + self.increment) - self.last_attest)
-            for i in range(int(time_since_attest_event//self.attest_time)):
-                self.attestation_window = not self.attestation_window
-                for n in self.nodes:
-                    if n.is_attesting:
-                        n.attestations.attest()
-                        
-                    n.is_attesting = self.attestation_window
-                    self.last_attest += self.attest_time
-                    
-            # trigger the random event
-            self.trigger_event()
-            # update time
-            self.time += self.increment
-            print(self.time)
-            
-        return 
-
-
 class Process:
     '''Parent class for processes. 
     INPUT:
