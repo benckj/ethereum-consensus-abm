@@ -614,11 +614,6 @@ def blockchain_to_digraph(blockchain):
 
     return nx.from_dict_of_dicts(d, create_using=nx.DiGraph)
 
-def blockchain_layout(blockchain_digraph):
-    #get max height
-    #get start block
-    #add to left for each height 
-    for b in blockchain_digraph.nodes()
 
     
 
