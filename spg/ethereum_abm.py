@@ -1,5 +1,5 @@
 from spg.runner import SingleRunner
-from base_model import Model
+from modelling import Model
 import networkx as nx
 
 

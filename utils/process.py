@@ -55,5 +55,7 @@ class AttestationGossipProcess(Process):
         
     def event(self):
         gossiping_node = rnd.choice(self.nodes)
-        gossiping_node.attestations.send_attestation_message()
+        # [Teja] handle attestation gossip here
+        # gossiping_node.attestations.send_attestation_message()
+        print(gossiping_node, 'gossips an attestation here')
         return
