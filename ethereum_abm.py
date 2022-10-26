@@ -93,7 +93,7 @@ def run_simulation(parameters):
             tau_block=parameters['tau_block'],
             tau_attest=parameters['tau_attestation']
             )
-    model.gillespie.run(parameters["simulation_time"])
+    model.run(parameters["simulation_time"])
     return model.results()
 
 
