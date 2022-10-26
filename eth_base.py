@@ -615,7 +615,36 @@ def blockchain_to_digraph(blockchain):
 
     return nx.from_dict_of_dicts(d, create_using=nx.DiGraph)
 
+def get_longest_chain(blockchain):
+    if isinstance(blockchain, set):
+        bc = list(blockchain)
+    else:
+        bc = blockchain.copy()
+    bc.sort(key=lambda x: x.height, reverse=True)
+    return bc[0]
 
+def calculate_orphan_rate(blockchain):
+    M = get_longest_chain(blockchain).predecessors
+    B = blockchain
+    return len(M)/len(B)
+
+def calculate_branch_ratio(blockchain):
+    if isinstance(blockchain, set):
+        bc = list(blockchain)
+    else:
+        bc = blockchain.copy()
+    M = get_longest_chain(blockchain).predecessors
+    B = set(blockchain)
+    Theta = B - M
+
+    s = 0
+    for b in M:
+        for c in Theta:
+            if b.parent == c.parent:
+                s += 1
+
+    return s/len(M)
+    
     
 
 
