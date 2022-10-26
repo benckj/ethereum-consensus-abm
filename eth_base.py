@@ -124,10 +124,11 @@ class EpochBoundary(FixedTimeEvent):
         self.rng.shuffle(self.validators)
         self.committees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)] 
                            for c in range(self.slots_per_epoch)]
-        print(self.committees)
-        j = self.rng.shuffle(list(range(self.slots_per_epoch)))
-        for i in range(1, self.leftover+1):
-            self.committees[j[i-1]].append(self.validators[-i])
+        j = list(range(self.slots_per_epoch))
+        self.rng.shuffle(j)
+        if self.leftover != 0:
+            for i in range(1, self.leftover+1):
+                self.committees[j[i-1]].append(self.validators[-i])
 
         for v in self.validators:
             v.is_attesting = False
