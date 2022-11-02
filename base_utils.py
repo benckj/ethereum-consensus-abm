@@ -1,79 +1,10 @@
 import networkx as nx
-import random as rnd
+import random as rng
 import numpy as np
 
-class Gillespie:
-    '''
-    The Gillespie class combines all the different classes to a single model.
-    ONce it ran, you can parse the resulting objects which are: Gillespie.nodes, Gillespie.blockchain.
-    INPUT:
-    - nodes         - list of Node objects
-    - blockchain    - list of Block objects, contains only genesis block upon initiating
-    - network       - Network object (which stores the network on which miners interact) (Not necessarily needed)
-    - tau_block     - float, block gossip latency
-    - tau_attest    - float, attestation gossip latency
-    '''
-    def __init__(self, nodes, blockchain, validators, network, tau_block = 1, tau_attest = 0.1):
-        
-        self.time = 0
-        self.blockchain = blockchain
-        self.nodes = nodes
-        self.validators = validators
-        
-        self.block_gossip_process = BlockGossipProcess(tau = tau_block, nodes = nodes)
-        self.attestation_gossip_process = AttestationGossipProcess(tau = tau_attest, nodes = nodes)
-        
-        self.epoch_boundary = EpochBoundary(32*12, self.validators)
-        self.slot_boundary = SlotBoundary(12, self.validators, self.epoch_boundary)
-        self.attestation_boundary = AttestationBoundary(12, offset = 4, validators = self.validators)
-        
-        self.processes = [self.block_gossip_process, self.attestation_gossip_process]
-        self.lambdas = [process.lam for process in self.processes]
-        self.lambda_sum = np.sum(self.lambdas)
-        
-        self.fixed_events = [self.epoch_boundary, self.slot_boundary, self.attestation_boundary]
-        
-        self.network = network
+import logging
 
-    def update_lambdas(self):
-        '''Lambdas are recauculated after each time increment
-        '''
-        self.lambdas = [process.lam for process in self.processes]
-        self.lambda_sum = np.sum(self.lambdas)
-
-    def calculate_time_increment(self):
-        '''Function to generate the random time increment from an exponential random distribution.
-        '''
-        #TODO: add a rng in the init and pass it to all random functions.
-        increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
-        return increment
-
-    def trigger_event(self):
-        '''Selects the next process according to its weight and it executes the related event.
-        '''
-        #TODO: add RNG
-        select_process = rnd.choices(population = self.processes, weights = self.lambdas, k = 1)[0]
-        select_process.event()
-
-    def run(self, stoping_time):       
-        '''Runs the model for a given stopping time.
-        '''
-        while self.time < stoping_time:
-
-            # generate next random increment time and save it in self.increment
-            increment = self.calculate_time_increment()
-            print('{:.2f}---->{:.2f}'.format(self.time, self.time + increment))
-            
-            # loop over fixed and trigger if time passes fixed event time
-            for fixed in self.fixed_events:
-                fixed.trigger(self.time + increment)
-            
-            # select poisson process and trigger selected process
-            self.trigger_event()
-            self.time += increment
-            
-        return 
-
+from consensus_utils import *
 
 class Process:
     '''Parent class for processes. 
@@ -107,14 +38,15 @@ class BlockGossipProcess(Process):
     - tau,      float, process latency
     """
     
-    def __init__(self, tau, nodes):
-        super().__init__(tau)
-        self.nodes = nodes
+    def __init__(self, tau, edges, rng = np.random.default_rng()):
+        self.edges = edges
+        self.num_edges = len(edges)
+
+        super().__init__((tau/self.num_edges))
+        self.rng = rng
         
     def event(self):
-        #TODO: from nodes sampling to edges sampling
-        gossiping_node = rnd.choice(self.nodes)
-        listening_node = rnd.choice(list(gossiping_node.neighbors))
+        gossiping_node, listening_node = self.rng.choice(self.edges)
         gossiping_node.gossip(listening_node)
         return
     
@@ -124,20 +56,25 @@ class AttestationGossipProcess(Process):
     - nodes,    list of Nodes obejct
     - tau,      float, process latency
     """
-    def __init__(self, tau, nodes):
+    def __init__(self, tau, nodes, rng = np.random.default_rng()):
         super().__init__(tau)
+        self.rng = rng
+
         self.nodes = nodes
-        
+
+    #TODO: logic should count messaged that are in the queue and select only those    
     def event(self):
-        gossiping_node = rnd.choice(self.nodes)
+        gossiping_node = self.rng.choice(self.nodes)
         gossiping_node.attestations.send_attestation_message()
         return
 
 class FixedTimeEvent():
-    def __init__(self, interval,time=0, offset=0):
-        if not offset >= 0:
+    def __init__(self, interval,time=0, offset=0, rng = None):
+        if not interval >= 0:
             raise ValueError("Interval must be positive")
-            
+        
+        self.rng = rng
+
         self.offset = offset
         self.interval = interval
         
@@ -159,14 +96,14 @@ class FixedTimeEvent():
         pass
 
 class SlotBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_boundary):
-        super().__init__(interval)
+    def __init__(self, interval, validators, epoch_boundary, rng= None):
+        super().__init__(interval,rng=rng)
         self.validators = validators
         self.epoch_boundary = epoch_boundary
 
     def event(self):
                 
-        for v in self.epoch_boundary.committees[self.counter // self.epoch_boundary.slots_per_epoch]:
+        for v in self.epoch_boundary.comittees[self.counter // self.epoch_boundary.slots_per_epoch]:
             v.is_attesting = True
             
         proposer = rng.choice(self.validators)
@@ -175,10 +112,10 @@ class SlotBoundary(FixedTimeEvent):
         print('Block proposed')
         
 class EpochBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators):
-        super().__init__(interval)
+    def __init__(self, interval, validators, rng = None):
+        super().__init__(interval, rng=rng)
         self.validators = validators
-        self.committees = []
+        self.comittees = []
         
         self.slots_per_epoch = 32
         self.v_n = len(self.validators)
@@ -186,27 +123,31 @@ class EpochBoundary(FixedTimeEvent):
         self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
         
     def event(self):
-        rng.shuffle(self.validators)
-        self.committees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)] 
+        self.rng.shuffle(self.validators)
+        self.comittees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)] 
                            for c in range(self.slots_per_epoch)]
         
-        j = rng.shuffle(list(range(self.slots_per_epoch)))
+        j = list(range(self.slots_per_epoch))
+        self.rng.shuffle(j)
         for i in range(1, self.leftover+1):
-            self.commitees[j[i-1]].append(self.validators[-i])
+            self.comittees[j[i-1]].append(self.validators[-i])
+        
+
+        for v in self.validators:
+            v.is_attesting = False
             
         print('New Epoch: Committees formed')
 
         
 class AttestationBoundary(FixedTimeEvent):
-    def __init__(self, interval, offset, validators):
-        super().__init__(interval, offset)
+    def __init__(self, interval, offset, validators, rng=None):
+        super().__init__(interval, offset,rng= rng)
         self.validators = validators
         
     def event(self):
         for v in self.validators:
             if v.is_attesting == True:
                 v.attestations.attest()
-                print('Attestor reporting')
 
 class Block:
     '''
@@ -231,7 +172,7 @@ class Block:
         self.children = set()
         self.parent = parent
         
-        if not parent:
+        if parent == None:
             self.parent = None
             self.height = 0
             self.emitter = "genesis"
@@ -242,11 +183,10 @@ class Block:
             self.height = self.parent.height + 1
             self.emitter = emitter
             parent.children.add(self)
-            self.predecessors = parent.predecessor.add(self)
+            self.predecessors = parent.predecessors.copy()
+            self.predecessors.add(self)
         
-        while block:
-            self.predecessors.add(block)
-            block = block.parent
+
             
     def __repr__(self):
         return '<Block {} (h={})>'.format(self.id, self.height)
@@ -269,9 +209,11 @@ class Node:
     def __update(cls):
         cls.counter += 1
 
-    def __init__(self, blockchain):
+    def __init__(self, blockchain, rng):
         self.__update()
         self.id = self.counter
+
+        self.rng = rng
         
         self.local_blockchain = {blockchain[0]}
         self.global_blockchain = blockchain
@@ -279,22 +221,22 @@ class Node:
         self.neighbors = set()  # set of neighbours peers on the p2p network
         self.non_gossiped_to = set()  # set of neighbour peers self.Node didn't gossip to
         
-        self.attestations = AttestationsData(self)
+        self.attestations = AttestationsData(self, self.rng)
         self.is_attesting = True
         
-    #TODO: mine->propose
-    def mine_block(self):
-        self.current_block = Block(self, self.current_block)
-        # debug
-        # print('Huzza! {} was proposed.'.format(self.current_block))
-        
-        self.local_blockchain.add(self.current_block)
-        self.global_blockchain.append(self.current_block)
+    def propose_block(self):
+        head_of_chain = self.use_lmd_ghost()
+        print('this is head',head_of_chain,' by ',self)
+        print('Block predecessors', head_of_chain.predecessors)
+
+        new_block = Block(emitter=self, parent=head_of_chain)
+        print('new_block pre', new_block.predecessors)
+
+        self.local_blockchain.add(new_block )
+        self.global_blockchain.append(new_block)
         
         # tracks the neighbours self.Node didnt gossip
         self.non_gossiped_to = self.neighbors.copy()
-        #TODO: remove
-        self.attestations.attest() 
         return
         
     def is_gossiping(self):
@@ -323,17 +265,17 @@ class Node:
     def listen(self, gossiping_node):
         """Receive new block and update local information accordingly.
         """
-        block = gossiping_node.current_block 
-        self.current_block = gossiping_node.current_block
-        self.update_local_blockchain(self.current_block)
-        #self.current_block.nodes.add(self)
+        block = gossiping_node.use_lmd_ghost()
+        self.update_local_blockchain(block)
         self.non_gossiped_to = self.neighbors.copy()
         self.non_gossiped_to.remove(gossiping_node)
 
         if self.is_attesting == True:
             self.attestations.attest()
 
-   
+    def use_lmd_ghost(self):
+        return lmd_ghost(self.local_blockchain, self.attestations.attestations)
+
     def __repr__(self):
         return '<Node {}>'.format(self.id)
                 
@@ -348,10 +290,7 @@ class Network:
     def __init__(self, G):
         # G is a networkx Graph
         self.network = G
-        #TODO: remove lcc..
-        lcc_set = max(nx.connected_components(self.network), key=len)
-        self.network = self.network.subgraph(lcc_set).copy()
-        
+
     def __len__(self):
         return len(self.network)
             
@@ -360,50 +299,14 @@ class Network:
         # dict map nodes in the nx.graph to nodes on p2p network
         nodes_dict = dict(zip(self.network.nodes(), nodes))
         # save peer node object as an attribute of nx node
-        nx.set_node_attributes(self.network, values = nodes_dict, name='node')
+        nx.set_node_attributes(self.network, values = nodes_dict, name='name')
 
         for n in self.network.nodes():
-            m = self.network.nodes[n]["node"]
+            m = self.network.nodes[n]["name"]
             # save each neighbour in the nx.Graph inside the peer node object
             for k in self.network.neighbors(n):
-                m.neighbors.add(self.network.nodes[k]["node"])    
-
-class Model:
-    '''Initiates the model and builds it around the parameters given
-    model.gillespie.run to run the simulation.
-    All objects are contained in the class.
-    '''
-    def __init__(self,
-                 graph = None,
-                 tau_block = None,
-                 tau_attest = None,
-                ):
-        
-        self.tau_block = tau_block
-        self.tau_attest = tau_attest
-        
-        self.blockchain = [Block()]
-        self.network = Network(graph) 
-        self.N = len(self.network)
-        self.nodes = [Node(blockchain = self.blockchain.copy()
-                            )
-                      for i in range(self.N)]
-
-        self.network.set_neighborhood(self.nodes)
-
-        self.gillespie = Gillespie(
-                                   nodes = self.nodes,
-                                   blockchain = self.blockchain,
-                                   network = self.network,
-                                   tau_block = self.tau_block,
-                                   tau_attest = self.tau_attest,
-                                  ) 
-
-    def results(self):
-        d = {"test": 1}
-        return d
-
-#TODO:         
+                m.neighbors.add(self.network.nodes[k]["name"])    
+       
 class Message():
     """It wraps attestation with respective recipient.
     INPUTS:
@@ -461,7 +364,8 @@ class AttestationsData():
     - node,     a Node object
     """
     
-    def __init__(self, node):
+    def __init__(self, node, rng):
+        self.rng = rng
         self.node = node
         self.attestations = {}  # Node:Block
         self.message_queue= set()  # Message
@@ -470,7 +374,7 @@ class AttestationsData():
     def attest(self):
         """Create the Attestation for the current head of the chain block.
         """
-        attestation = Attestation(self.node, self.node.current_block)
+        attestation = Attestation(self.node, self.node.use_lmd_ghost())
         
         self.update_attestations(attestation)
         self.add_to_message_queue(attestation)  # init to send it out
@@ -478,7 +382,7 @@ class AttestationsData():
     def update_attestations(self, attestation):
         '''Excepts an attestation object which is passed and then processed further.
         INPUTS:
-        - attestation,  Attestation object
+        - attestation,  Attestation objectco
         OUTPUT:
         - Bool, wheter or not the update takes place or not
         '''
@@ -507,8 +411,7 @@ class AttestationsData():
             self.message_queue.add(Message(attestation, n))
             
     def select_attestation_message(self):
-        #TODO: add rng
-        s = rnd.choice(list(self.message_queue))
+        s = self.rng.choice(list(self.message_queue))
         return s
         
     def send_attestation_message(self):
@@ -543,83 +446,5 @@ class AttestationsData():
                 if a.block == block:
                     clear_cache.add(a)
                     #TODO: use update_attestations()
-                    self.attestations.update(a.as_dict())
+                    self.update_attestations(a)
             self.attestations_cache = self.attestations_cache - clear_cache
-
-'''
-FUNCTIONS
-'''
-'''
-LMD Ghost following functions handle LMD Ghost Evaluation of Blocks
-'''
-
-def find_leaves_of_blockchain(blockchain):
-    parent_blocks = {b.parent for b in blockchain}
-    return blockchain - parent_blocks
-
-def lmd_ghost(blockchain, attestations, stake=uniform_stake):
-    leaves = find_leaves_of_blockchain(blockchain)
-    if len(leaves)==1:
-        return leaves.pop()
-
-    inverse_attestations= {}
-    for n, b in attestations.items():
-        inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
-
-    attested_blocks = set(inverse_attestations.keys())
-    if len(attested_blocks)==0:
-        return next(iter(blockchain))
-    
-    lowest_attestation = next(iter(attested_blocks))
-    for b in attested_blocks:
-        if b.height < lowest_attestation.height:
-            lowest_attestation = b
-            
-    if lowest_attestation.height == 0:
-        cut_trees_per_leave = {b:b.predecessors for b in leaves}
-    else:
-        cut_trees_per_leave = {b:b.predecessors - lowest_attestation.parent.predecessors for b in leaves}
-
-    attested_blocks_per_leaf = {b: cut_trees_per_leave[b] & attested_blocks for b in leaves}
-    attested_blocks_per_leaf = {b: n for b, n in attested_blocks_per_leaf.items() if n}
-    if attested_blocks_per_leaf.keys()==1:
-        return next(iter(attested_blocks_per_leaf.keys()))
-
-    leaves_with_attestations = set(attested_blocks_per_leaf.keys())
-
-    attestations_per_leaf  = {b:[inverse_attestations[x] for x in attested_blocks_per_leaf[b]] for b in leaves_with_attestations}
-    attestations_per_leaf  = {b:[node for nodes in n for node in nodes] for b,n in attestations_per_leaf.items()}
-
-    sum_attestations_per_leaf = {b:sum([uniform_stake(n) for n in attestations_per_leaf[b]]) for b in leaves_with_attestations}
-    return max(sum_attestations_per_leaf, key=sum_attestations_per_leaf.get)
-
-
-def simple_attestation_evaluation(n):
-    return 1
-
-def stake_attestation_evaluation(n):
-    pass
-
-def blockchain_to_digraph(blockchain):
-    leaves = find_leaves_of_blockchain(blockchain)
-
-    d = {}
-    for l in leaves:
-        b=l
-        while b:
-            d[b]={b.parent}
-            b = b.parent
-            if b in d.keys():
-                break
-
-    return nx.from_dict_of_dicts(d, create_using=nx.DiGraph)
-
-
-    
-
-
-    
-                    
-                
-
-     
