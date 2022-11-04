@@ -1,7 +1,7 @@
-import itertools
 import networkx as nx
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib as plt
+from matplotlib.patches import Rectangle
 
 
 def blockchain_layout(G, relative = False):
@@ -14,8 +14,6 @@ def blockchain_layout(G, relative = False):
         max_y= max([v[1] for v in position.values()])
         if max_y==0:
             max_y=1
-
-
 
         for k,v in position.items():
             position[k]=(v[0]/max_x,v[1]/max_y)
@@ -145,6 +143,6 @@ def slot_algorithm(G, pos = {}, K=None, inv={}):
     
     return pos
 
+# def draw_chain(node):
+#     print('new_block pre')
     
-
-

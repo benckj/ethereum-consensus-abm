@@ -16,7 +16,7 @@ def simple_attestation_evaluation(n):
 def stake_attestation_evaluation(n):
     pass
 
-
+## TEJA Wrong consensus
 def lmd_ghost(blockchain, attestations, stake=simple_attestation_evaluation):
     leaves = find_leaves_of_blockchain(blockchain)
     if len(leaves)==1:

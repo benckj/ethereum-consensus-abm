@@ -49,7 +49,7 @@ class Model:
             # generate next random increment time and save it in self.increment
             increment = self.gillespie.calculate_time_increment()
 
-            # loop over fixed and trigger if time passes fixed event time
+            # loop over fixed events and trigger if time passes fixed event time
             for fixed in self.fixed_events:
                 fixed.trigger(self.time + increment)
 

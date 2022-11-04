@@ -1,5 +1,8 @@
 from base_utils import *
 
+## TEJA Understanding, this is used to provide a calculated lambda error in this processes.
+
+
 class Gillespie:
     '''
     The Gillespie class combines all the different classes to a single model.
@@ -12,9 +15,7 @@ class Gillespie:
     - tau_attest    - float, attestation gossip latency
     '''
     def __init__(self, processes , rng=np.random.default_rng()):
-        
         self.rng = rng
-
         self.processes = processes
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
@@ -30,6 +31,7 @@ class Gillespie:
     def calculate_time_increment(self):
         '''Function to generate the random time increment from an exponential random distribution.
         '''
+        self.update_lambdas()
         increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
         return increment
 

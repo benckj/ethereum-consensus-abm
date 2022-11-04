@@ -2,9 +2,8 @@ import networkx as nx
 import random as rng
 import numpy as np
 
-import logging
-
 from consensus_utils import *
+from visualizations import *
 
 class Process:
     '''Parent class for processes. 
@@ -94,22 +93,6 @@ class FixedTimeEvent():
     
     def event(self):
         pass
-
-class SlotBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_boundary, rng= None):
-        super().__init__(interval,rng=rng)
-        self.validators = validators
-        self.epoch_boundary = epoch_boundary
-
-    def event(self):
-                
-        for v in self.epoch_boundary.comittees[self.counter // self.epoch_boundary.slots_per_epoch]:
-            v.is_attesting = True
-            
-        proposer = rng.choice(self.validators)
-        proposer.propose_block()
-
-        print('Block proposed')
         
 class EpochBoundary(FixedTimeEvent):
     def __init__(self, interval, validators, rng = None):
@@ -131,14 +114,28 @@ class EpochBoundary(FixedTimeEvent):
         self.rng.shuffle(j)
         for i in range(1, self.leftover+1):
             self.comittees[j[i-1]].append(self.validators[-i])
-        
 
         for v in self.validators:
             v.is_attesting = False
             
         print('New Epoch: Committees formed')
 
-        
+class SlotBoundary(FixedTimeEvent):
+    def __init__(self, interval, validators, epoch_boundary, rng= None):
+        super().__init__(interval,rng=rng)
+        self.validators = validators
+        self.epoch_boundary = epoch_boundary
+
+    def event(self):
+        for v in self.epoch_boundary.comittees[self.counter // self.epoch_boundary.slots_per_epoch]:
+            v.is_attesting = True
+            
+        proposer = rng.choice(self.validators)
+        proposer.propose_block()
+
+        print('Block proposed {}'.format(self.counter))
+
+
 class AttestationBoundary(FixedTimeEvent):
     def __init__(self, interval, offset, validators, rng=None):
         super().__init__(interval, offset,rng= rng)
@@ -148,6 +145,7 @@ class AttestationBoundary(FixedTimeEvent):
         for v in self.validators:
             if v.is_attesting == True:
                 v.attestations.attest()
+        print('Block attested {}'.format(self.counter))
 
 class Block:
     '''
@@ -185,8 +183,6 @@ class Block:
             parent.children.add(self)
             self.predecessors = parent.predecessors.copy()
             self.predecessors.add(self)
-        
-
             
     def __repr__(self):
         return '<Block {} (h={})>'.format(self.id, self.height)
@@ -226,17 +222,16 @@ class Node:
         
     def propose_block(self):
         head_of_chain = self.use_lmd_ghost()
-        print('this is head',head_of_chain,' by ',self)
-        print('Block predecessors', head_of_chain.predecessors)
-
         new_block = Block(emitter=self, parent=head_of_chain)
-        print('new_block pre', new_block.predecessors)
+        self.local_blockchain.add(new_block)
 
-        self.local_blockchain.add(new_block )
+        ## TEJA, why is global updated, why global exists in the first place?
         self.global_blockchain.append(new_block)
         
         # tracks the neighbours self.Node didnt gossip
         self.non_gossiped_to = self.neighbors.copy()
+
+        # draw_chain(self)
         return
         
     def is_gossiping(self):
@@ -261,6 +256,7 @@ class Node:
         #self.non_gossiped_to.remove(listening_node)
         listening_node.listen(self)
 
+    ## TEJA why ia gossiping node call the consensus again.
     #TODO: listen blocks, naming should be changed accordingly
     def listen(self, gossiping_node):
         """Receive new block and update local information accordingly.
@@ -445,6 +441,5 @@ class AttestationsData():
             for a in self.attestations_cache:
                 if a.block == block:
                     clear_cache.add(a)
-                    #TODO: use update_attestations()
                     self.update_attestations(a)
             self.attestations_cache = self.attestations_cache - clear_cache
