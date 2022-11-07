@@ -1,4 +1,3 @@
-import random as rnd
 import networkx as nx
 from base_utils import *
 from Gillespie import *
@@ -20,10 +19,10 @@ class Model:
         self.tau_block = tau_block
         self.tau_attest = tau_attest
 
-        self.blockchain = [Block('genesis')]
+        self.blockchain = [Block('0','genesis')]
         self.network = Network(graph)
         self.no_of_nodes = len(self.network)
-        self.nodes = [Node(blockchain = self.blockchain, rng = self.rng) for i in range(self.no_of_nodes)]
+        self.nodes = [Node(self.blockchain, rng = self.rng) for i in range(self.no_of_nodes)]
 
         self.validators =  self.nodes
 

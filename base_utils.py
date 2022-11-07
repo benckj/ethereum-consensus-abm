@@ -99,6 +99,7 @@ class EpochBoundary(FixedTimeEvent):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.comittees = []
+        self.proposers = []
         
         self.slots_per_epoch = 32
         self.v_n = len(self.validators)
@@ -110,6 +111,7 @@ class EpochBoundary(FixedTimeEvent):
         self.comittees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)] 
                            for c in range(self.slots_per_epoch)]
         
+        self.proposers = [self.rng.choice(self.validators) for c in range(self.slots_per_epoch)]        
         j = list(range(self.slots_per_epoch))
         self.rng.shuffle(j)
         for i in range(1, self.leftover+1):
@@ -129,11 +131,10 @@ class SlotBoundary(FixedTimeEvent):
     def event(self):
         for v in self.epoch_boundary.comittees[self.counter // self.epoch_boundary.slots_per_epoch]:
             v.is_attesting = True
-            
-        proposer = rng.choice(self.validators)
-        proposer.propose_block()
-
-        print('Block proposed {}'.format(self.counter))
+        
+        proposer = self.epoch_boundary.proposers[self.counter // self.epoch_boundary.slots_per_epoch]
+        proposer.propose_block('{}_{}_{}'.format(self.epoch_boundary.counter, self.counter,np.floor(self.rng.random() * 10)))
+        print('Block proposed {}'.format(proposer.local_blockchain[-1]))
 
 
 class AttestationBoundary(FixedTimeEvent):
@@ -162,13 +163,14 @@ class Block:
     def __update(cls):
         cls.counter += 1
 
-    def __init__(self, emitter = "genesis", parent = None):
+    def __init__(self, value, emitter = "genesis",parent = None):
 
         self.id = self.counter
         self.__update()
 
         self.children = set()
         self.parent = parent
+        self.value = value
         
         if parent == None:
             self.parent = None
@@ -185,7 +187,7 @@ class Block:
             self.predecessors.add(self)
             
     def __repr__(self):
-        return '<Block {} (h={})>'.format(self.id, self.height)
+        return '<Block {} (h={}) (v={})>'.format(self.id, self.height, self.value)
     
     def __next__(self):
         if self.parent:
@@ -205,28 +207,28 @@ class Node:
     def __update(cls):
         cls.counter += 1
 
-    def __init__(self, blockchain, rng):
+    def __init__(self, block, rng):
         self.__update()
         self.id = self.counter
 
         self.rng = rng
         
-        self.local_blockchain = {blockchain[0]}
-        self.global_blockchain = blockchain
-        self.current_block = blockchain[0] # A Blockchain has to be initialized
+        self.local_blockchain = [block[0]]
+        # self.global_blockchain = block
+        self.current_block = block[0] # A Blockchain has to be initialized
         self.neighbors = set()  # set of neighbours peers on the p2p network
         self.non_gossiped_to = set()  # set of neighbour peers self.Node didn't gossip to
         
         self.attestations = AttestationsData(self, self.rng)
         self.is_attesting = True
         
-    def propose_block(self):
+    def propose_block(self, value):
         head_of_chain = self.use_lmd_ghost()
-        new_block = Block(emitter=self, parent=head_of_chain)
-        self.local_blockchain.add(new_block)
+        new_block = Block(value, emitter=self, parent=head_of_chain)
+        self.local_blockchain.append(new_block)
 
         ## TEJA, why is global updated, why global exists in the first place?
-        self.global_blockchain.append(new_block)
+        # self.global_blockchain.append(new_block)
         
         # tracks the neighbours self.Node didnt gossip
         self.non_gossiped_to = self.neighbors.copy()
@@ -247,7 +249,7 @@ class Node:
         """When self.Node receive a new block, update the local copy of the blockchain.
         """
         while block not in self.local_blockchain:
-            self.local_blockchain.add(block)
+            self.local_blockchain.append(block)
             self.attestations.check_cache(block)
             block = block.parent 
             

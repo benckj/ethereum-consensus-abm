@@ -1,8 +1,5 @@
 from base_utils import *
 
-## TEJA Understanding, this is used to provide a calculated lambda error in this processes.
-
-
 class Gillespie:
     '''
     The Gillespie class combines all the different classes to a single model.
@@ -20,18 +17,17 @@ class Gillespie:
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
         self.lambda_weighted = [process.lam/self.lambda_sum  for process in self.processes]
-        
-    def update_lambdas(self):
-        '''Lambdas are recauculated after each time increment
-        '''
-        self.lambdas = [process.lam for process in self.processes]
-        self.lambda_sum = np.sum(self.lambdas)
-        self.lambda_weighted = [process.lam/self.lambda_sum  for process in self.processes]
+
+    # def update_lambdas(self):
+    #     '''Lambdas are recauculated after each time increment
+    #     '''
+    #     self.lambdas = [process.lam for process in self.processes]
+    #     self.lambda_sum = np.sum(self.lambdas)
+    #     self.lambda_weighted = [process.lam/self.lambda_sum  for process in self.processes]
 
     def calculate_time_increment(self):
         '''Function to generate the random time increment from an exponential random distribution.
         '''
-        self.update_lambdas()
         increment = (-np.log(np.random.random())/self.lambda_sum).astype('float64')
         return increment
 
