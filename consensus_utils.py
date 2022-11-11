@@ -7,8 +7,8 @@ LMD Ghost following functions handle LMD Ghost Evaluation of Blocks
 '''
 
 def find_leaves_of_blockchain(blockchain):
-    parent_blocks = [b for b in blockchain if b.parent is not None]
-    return blockchain[len(parent_blocks)-1:]
+    parent_blocks = {b.parent for b in blockchain}
+    return blockchain - parent_blocks
 
 def simple_attestation_evaluation(n):
     return 1
