@@ -1,4 +1,4 @@
-from base_utils import *
+import numpy as np
 
 class Gillespie:
     '''
@@ -17,13 +17,6 @@ class Gillespie:
         self.lambdas = [process.lam for process in self.processes]
         self.lambda_sum = np.sum(self.lambdas)
         self.lambda_weighted = [process.lam/self.lambda_sum  for process in self.processes]
-
-    # def update_lambdas(self):
-    #     '''Lambdas are recauculated after each time increment
-    #     '''
-    #     self.lambdas = [process.lam for process in self.processes]
-    #     self.lambda_sum = np.sum(self.lambdas)
-    #     self.lambda_weighted = [process.lam/self.lambda_sum  for process in self.processes]
 
     def calculate_time_increment(self):
         '''Function to generate the random time increment from an exponential random distribution.

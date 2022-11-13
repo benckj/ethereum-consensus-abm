@@ -1,163 +1,7 @@
 import networkx as nx
-import random as rng
-import numpy as np
 
 from consensus_utils import *
 from visualizations import *
-
-
-class Process:
-    '''Parent class for processes. 
-    INPUT:
-    - tau,  float, the latency
-    '''
-
-    def __init__(self, tau):
-        self.__tau = tau
-        self.__lam = 1/tau
-
-    @property
-    def tau(self):
-        return self.__tau
-
-    @tau.setter
-    def tau(self, value):
-        self.__tau = value
-        self.__lam = 1/self.__tau
-
-    @property
-    def lam(self):
-        return self.__lam
-
-    def event(self):
-        pass
-
-
-class BlockGossipProcess(Process):
-    """The process to manage block gossiping
-    INPUT:
-    - nodes,    list of Nodes obejct
-    - tau,      float, process latency
-    """
-
-    def __init__(self, tau, edges, rng=np.random.default_rng()):
-        self.edges = edges
-        self.num_edges = len(edges)
-
-        super().__init__((tau/self.num_edges))
-        self.rng = rng
-
-    def event(self):
-        gossiping_node, listening_node = self.rng.choice(self.edges)
-        gossiping_node.gossip(listening_node)
-        return
-
-
-class AttestationGossipProcess(Process):
-    """The process to manage attestation gossiping
-    INPUT:
-    - nodes,    list of Nodes obejct
-    - tau,      float, process latency
-    """
-
-    def __init__(self, tau, nodes, rng=np.random.default_rng()):
-        super().__init__(tau)
-        self.rng = rng
-
-        self.nodes = nodes
-
-    # TODO: logic should count messaged that are in the queue and select only those
-    def event(self):
-        gossiping_node = self.rng.choice(self.nodes)
-        gossiping_node.attestations.send_attestation_message()
-        return
-
-
-class FixedTimeEvent():
-    def __init__(self, interval, time=0, offset=0, rng=None):
-        if not interval >= 0:
-            raise ValueError("Interval must be positive")
-
-        self.rng = rng
-
-        self.offset = offset
-        self.interval = interval
-
-        self.last_event = None
-        self.next_event = time + self.offset
-
-        self.counter = 0
-
-    def trigger(self, next_time):
-        while next_time > self.next_event:
-            self.event()
-            self.counter += 1
-            self.next_event += self.interval
-
-            return True
-        return False
-
-    def event(self):
-        pass
-
-
-class EpochBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, rng=None):
-        super().__init__(interval, rng=rng)
-        self.validators = validators
-        self.comittees = []
-        self.proposers = []
-
-        self.slots_per_epoch = 32
-        self.v_n = len(self.validators)
-        self.committee_size = int(self.v_n/self.slots_per_epoch)
-        self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
-
-    def event(self):
-        self.rng.shuffle(self.validators)
-        self.comittees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)]
-                          for c in range(self.slots_per_epoch)]
-
-        self.proposers = [self.rng.choice(self.validators)
-                          for c in range(self.slots_per_epoch)]
-        print(self.comittees, self.proposers)
-        j = list(range(self.slots_per_epoch))
-        self.rng.shuffle(j)
-        for i in range(1, self.leftover+1):
-            self.comittees[j[i-1]].append(self.validators[-i])
-
-        for v in self.validators:
-            v.is_attesting = False
-
-        print('New Epoch: Committees formed')
-
-
-class SlotBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_boundary, rng=None):
-        super().__init__(interval, rng=rng)
-        self.validators = validators
-        self.epoch_boundary = epoch_boundary
-
-    def event(self):
-        for v in self.epoch_boundary.comittees[self.counter % self.epoch_boundary.slots_per_epoch]:
-            v.is_attesting = True
-
-        proposer = self.epoch_boundary.proposers[self.counter %
-                                                 self.epoch_boundary.slots_per_epoch]
-        proposer.propose_block('E{}_S{}'.format(
-            self.epoch_boundary.counter, self.counter))
-        print('Block proposed {}'.format(proposer.local_blockchain))
-
-
-class AttestationBoundary(FixedTimeEvent):
-    def __init__(self, interval, offset, slot_boundary, epoch_boundary, rng=None):
-        super().__init__(interval, offset, rng=rng)
-        self.slot_boundary = slot_boundary
-        self.epoch_boundary = epoch_boundary
-
-    def event(self):
-        for v in self.epoch_boundary.comittees[self.slot_boundary.counter % self.epoch_boundary.slots_per_epoch]:
-            v.attestations.attest()
 
 
 class Block:
@@ -227,8 +71,8 @@ class Node:
         self.neighbors = set()  # set of neighbours peers on the p2p network
         self.non_gossiped_to = set()  # set of neighbour peers self.Node didn't gossip to
 
-        self.attestations = AttestationsData(self, self.rng)
-        self.is_attesting = True
+        self.attestations_ledger = AttestationsLedger(self, self.rng)
+        self.is_attesting = False
 
     def propose_block(self, value):
         head_of_chain = self.use_lmd_ghost()
@@ -257,7 +101,7 @@ class Node:
         """
         while block not in self.local_blockchain:
             self.local_blockchain.add(block)
-            self.attestations.check_cache(block)
+            self.attestations_ledger.check_cache(block)
             block = block.parent
 
     # TODO: gossip blocks, naming should be changed accordingly
@@ -275,10 +119,10 @@ class Node:
         self.non_gossiped_to.remove(gossiping_node)
 
         if self.is_attesting == True:
-            self.attestations.attest()
+            self.attestations_ledger.attest()
 
     def use_lmd_ghost(self):
-        return lmd_ghost(self.local_blockchain, self.attestations.attestations)
+        return lmd_ghost(self.local_blockchain, self.attestations_ledger.attestations)
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)
@@ -364,7 +208,7 @@ class Attestation():
         return '<Attestation: Block {} by node {}>'.format(self.block.id, self.attestor.id)
 
 
-class AttestationsData():
+class AttestationsLedger():
     """It manages and saves attestations for a node.
     INPUTS:
     - node,     a Node object
@@ -385,15 +229,14 @@ class AttestationsData():
         attestation = Attestation(self.node, self.node.use_lmd_ghost())
         self.update_attestations(attestation)
         self.add_to_message_queue(attestation)  # init to send it out
-
-        self.node.is_attesting = False
+        self.node.is_attesting = False # As a node has to attest only once in a slot
 
     def update_attestations(self, attestation):
         '''Expects an attestation object which is passed and then processed further.
         INPUTS:
         - attestation,  Attestation objectco
         OUTPUT:
-        - Bool, whether or not the update takes place or not
+        - Bool, whether or not the update takes place or not 
         '''
         # if node doesn't know the block the attestation is about, cache it
         if not attestation.block in self.node.local_blockchain:
@@ -429,7 +272,7 @@ class AttestationsData():
             # print(str(self.node) + '  - sending ->  ' +
             #       str(message) + str(message.recipient))
 
-            message.recipient.attestations.receive_attestation(self, message)
+            message.recipient.attestations_ledger.receive_attestation(self, message)
 
     def receive_attestation(self, other, message):
         attestation = message.attestation

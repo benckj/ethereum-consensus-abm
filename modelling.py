@@ -1,7 +1,11 @@
 import networkx as nx
+import numpy as np
+
 from base_utils import *
 from malicious_node import *
 from Gillespie import *
+from fixedEvents import *
+from randomProcess import *
 
 
 class Model:
@@ -16,7 +20,7 @@ class Model:
                  tau_block=None,
                  tau_attest=None,
                  seed=None,
-                 malicious_percent=0.1
+                 malicious_percent=0.6
                  ):
 
         self.rng = np.random.default_rng(seed)
@@ -95,5 +99,5 @@ if __name__ == "__main__":
         tau_block=1,
         tau_attest=1
     )
-    model.run(1e2)
+    model.run(2e2)
     model.results()

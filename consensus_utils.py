@@ -16,6 +16,11 @@ def simple_attestation_evaluation(n):
 def stake_attestation_evaluation(n):
     pass
 
+
+# https://github.com/ethereum/research/blob/master/ghost/ghost.py
+# https://github.com/ethereum/consensus-specs/blob/ea31ff3cea51830f8693770f69dab8b2ab49b45e/specs/core/0_beacon-chain.md#beacon-chain-fork-choice-rule
+
+# There is a few things which are missing here
 def lmd_ghost(blockchain, attestations, stake=simple_attestation_evaluation):
     leaves = find_leaves_of_blockchain(blockchain)
     if len(leaves)==1:
