@@ -51,6 +51,7 @@ class Block:
         else:
             raise StopIteration
 
+
 class Node:
     '''Class for the validator.
 
@@ -122,7 +123,12 @@ class Node:
             self.attestations_ledger.attest()
 
     def use_lmd_ghost(self):
-        return lmd_ghost(self.local_blockchain, self.attestations_ledger.attestations)
+        # print('LMD GHOST INPUTS', self.local_blockchain,
+        #       self.attestations_ledger.attestations)
+        k = lmd_ghost(self.local_blockchain,
+                      self.attestations_ledger.attestations)
+        # print('LMD GHOST Output', k)
+        return k
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)
@@ -229,7 +235,7 @@ class AttestationsLedger():
         attestation = Attestation(self.node, self.node.use_lmd_ghost())
         self.update_attestations(attestation)
         self.add_to_message_queue(attestation)  # init to send it out
-        self.node.is_attesting = False # As a node has to attest only once in a slot
+        self.node.is_attesting = False  # As a node has to attest only once in a slot
 
     def update_attestations(self, attestation):
         '''Expects an attestation object which is passed and then processed further.
@@ -272,7 +278,8 @@ class AttestationsLedger():
             # print(str(self.node) + '  - sending ->  ' +
             #       str(message) + str(message.recipient))
 
-            message.recipient.attestations_ledger.receive_attestation(self, message)
+            message.recipient.attestations_ledger.receive_attestation(
+                self, message)
 
     def receive_attestation(self, other, message):
         attestation = message.attestation

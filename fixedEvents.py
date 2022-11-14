@@ -1,5 +1,6 @@
 from threading import Timer
 
+
 class FixedTimeEvent():
     def __init__(self, interval, time=0, offset=0, rng=None):
         if not interval >= 0:
@@ -48,12 +49,13 @@ class EpochBoundary(FixedTimeEvent):
 
         self.proposers = [self.rng.choice(self.validators)
                           for c in range(self.slots_per_epoch)]
-        print(self.comittees, self.proposers)
+
         j = list(range(self.slots_per_epoch))
         self.rng.shuffle(j)
         for i in range(1, self.leftover+1):
             self.comittees[j[i-1]].append(self.validators[-i])
 
+        print(self.comittees, self.proposers)
         print('New Epoch: Committees formed')
 
 
@@ -70,8 +72,9 @@ class SlotBoundary(FixedTimeEvent):
             self.epoch_boundary.counter, self.counter))
         print('Block proposed {}'.format(proposer.local_blockchain))
 
-        schedule = Timer(4, self.activate_attesting)
-        schedule.start()
+        # schedule = Timer(4, self.activate_attesting)
+        # schedule.start()
+        self.activate_attesting()
 
     def activate_attesting(self):
         print('activating attesting for slot:{}'.format(self.counter))
@@ -86,5 +89,6 @@ class AttestationBoundary(FixedTimeEvent):
         self.epoch_boundary = epoch_boundary
 
     def event(self):
+        print(' attesting in the fixed event')
         for v in [v for v in self.epoch_boundary.comittees[self.slot_boundary.counter % self.epoch_boundary.slots_per_epoch] if v.is_attesting == True]:
             v.attestations_ledger.attest()

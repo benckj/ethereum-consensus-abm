@@ -19,7 +19,6 @@ def stake_attestation_evaluation(n):
 
 # https://github.com/ethereum/research/blob/master/ghost/ghost.py
 # https://github.com/ethereum/consensus-specs/blob/ea31ff3cea51830f8693770f69dab8b2ab49b45e/specs/core/0_beacon-chain.md#beacon-chain-fork-choice-rule
-
 # There is a few things which are missing here
 def lmd_ghost(blockchain, attestations, stake=simple_attestation_evaluation):
     leaves = find_leaves_of_blockchain(blockchain)
@@ -31,10 +30,12 @@ def lmd_ghost(blockchain, attestations, stake=simple_attestation_evaluation):
         inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
 
     attested_blocks = set(inverse_attestations.keys())
+    ## check this again
     if len(attested_blocks)==0:
         return next(iter(blockchain))
     
     lowest_attestation = next(iter(attested_blocks))
+
     for b in attested_blocks:
         if b.height < lowest_attestation.height:
             lowest_attestation = b
