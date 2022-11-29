@@ -2,6 +2,6 @@
 :network_topology ER 
 :simulation_time 2e2
 .no_neighs 3
-.no_nodes 40
-+tau_block 1 2 .5
-*tau_attestation 1 2 1.5 
+.no_nodes 64
++tau_block 11 12 .5
++tau_attestation 11 12 0.5 

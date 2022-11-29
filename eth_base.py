@@ -223,7 +223,8 @@ class Node:
         return
 
     def issue_attestation(self):
-        self.attestations[self] = (self.use_lmd_ghost(), self.model.slot_boundary.counter)
+        self.attestations[self] = (self.use_lmd_ghost(),
+                                   self.model.slot_boundary.counter)
 
     def receive_attestations(self, attestations):
         attestations_old = self.attestations.copy()
@@ -374,8 +375,8 @@ class Model:
         self.validators = self.nodes
 
         for n in self.nodes:
-            n.attestations = {v: (self.blockchain[0],-1) for v in self.validators}
-
+            n.attestations = {v: (self.blockchain[0], -1)
+                              for v in self.validators}
 
         self.network.set_neighborhood(self.nodes)
         self.edges = [(n, k) for n in self.nodes for k in n.neighbors]
@@ -422,7 +423,7 @@ class Model:
             self.time += increment
 
     def results(self):
-        d = {"test": 1}
+        d = {"Xi": calculate_orphan_rate(self.blockchain)}
         return d
 
 
@@ -446,11 +447,12 @@ def simple_attestation_evaluation(n):
 def stake_attestation_evaluation(n):
     pass
 
-def lmd_ghost(blockchain, attestations):
 
+def lmd_ghost(blockchain, attestations):
     attest = {k: v[0] for k, v in attestations.items()}
-    #lowest_attested_block_height = min(b.height for b in attest.values())
-    #blocks = {b for b in blockchain if b.height >= lowest_attested_block_height}
+    # lowest_attested_block_height = min(b.height for b in attest.values())
+    # blocks =
+    # {b for b in blockchain if b.height >= lowest_attested_block_height}
     parent_blocks = {b.parent for b in blockchain}
     leaves = blockchain - parent_blocks
 
@@ -467,14 +469,18 @@ def lmd_ghost(blockchain, attestations):
             if block in inverse_attestations.keys():
                 for node in inverse_attestations[block]:
                     val += 1
-        heads_of_chains[head_of_chain]=val
+        heads_of_chains[head_of_chain] = val
     max_lmd_val = max(heads_of_chains.values())
-    max_heads = [key for key, value in heads_of_chains.items() if value == max_lmd_val]
-    #introduce tiebreaker
+    max_heads = [key for key, value
+                 in heads_of_chains.items() if value == max_lmd_val]
+    # introduce tiebreaker
     sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
     return sorted_max_heads[0]
 
-def lmd_ghost_needs_debug_not_used(blockchain, attestations, stake=simple_attestation_evaluation):
+
+def lmd_ghost_needs_debug_not_used(blockchain,
+                                   attestations,
+                                   stake=simple_attestation_evaluation):
     attestations = {k: v[0] for k, v in attestations.items()}
     leaves = find_leaves_of_blockchain(blockchain)
     if len(leaves) == 1:
