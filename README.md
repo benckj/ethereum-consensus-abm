@@ -1,4 +1,15 @@
 # EthereumPOS
+The scope of this repository is to provide the interested users with a simple and efficient 
+tool to simulate Ethereum Proof-of-stake consensus.
+We developed a very simple agent-based model in order to simulate the protocol described [by combining GHOST and Casper](https://arxiv.org/abs/2003.03052).
+Downloading this repository, you should be able to simulate Ethereum consensus under different conditions:
+
+- different peer-to-peer network structures
+- different peer-to-peer latency parameters
+
+and asses the resulting consensus quality using some simple yet effective measures.
+The code is written in python and comes wrapped with `pyspg` a useful python module to run
+experiments on multiple parameters set in parallel.
 
 ## Install required libraries
 Tested. on `python 3.9.2`.
