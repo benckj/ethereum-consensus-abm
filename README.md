@@ -141,3 +141,6 @@ The result look like this:
 ## Contacts
 You can contact us for any inquiry at:
 - Nicolo' Vallarano: vallarano `at` ifi.uzh.ch
+
+## aknoledgments
+The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, Informatic Department of the university of Zurich and financed by the Academic Grants Round Grantee from  The Ethereum Foundation.
