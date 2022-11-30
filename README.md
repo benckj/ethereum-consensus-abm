@@ -92,6 +92,18 @@ no_neighs,no_nodes,tau_block,tau_attestation,Xi
 
 `Xi` is an output result: is a function computed on the final result of the simulation for a specific set of parameters(defined on the same row).
 In the specific `Xi` is the ratio of blocks in the mainchain over the total blocks produced in the simulation.
+
+## Experiments folder
+This folder contains some pre-defined experiments to help you understand how the repository works.
+In order to obtain the resulta from the previous section you just need to move into the folder `experiments` and run the appropriate command:
+```
+cd experiments
+python3 ../ethereum_abm.py --repeat=2 --workers=32 tutorial.spg
+```
+`tutorial.spg` is the `.spg` file containing the input parameters definitions used in previous section.
+This is also a good method to check everything works smoothly.
+
 ## TODO for future extensions
 - simulate reorg attacks [add reference]
 - simulate balance attacks [add reference]
+- improve and finish `visualizations.py`
