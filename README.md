@@ -149,9 +149,11 @@ The result look like this:
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## Contacts
+## Authors
 You can contact us for any inquiry at:
 - Nicolo' Vallarano: vallarano `at` ifi.uzh.ch
+- Caspar Schwarz-Schilling
+- Benjamin Kraner
 
 ## aknoledgments
-The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, Informatic Department of the university of Zurich and financed by the Academic Grants Round Grantee from  The Ethereum Foundation.
+The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, Informatic Department of the University of Zurich. The work was supported by a grant from the Ethereum Foundation as part of the Academic Grants Round. We thank Barnabè Monnot for fruitful discussions.
