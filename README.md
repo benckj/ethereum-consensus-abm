@@ -155,5 +155,5 @@ You can contact us for any inquiry at:
 - Caspar Schwarz-Schilling
 - Benjamin Kraner
 
-## aknoledgments
-The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, Informatic Department of the University of Zurich. The work was supported by a grant from the Ethereum Foundation as part of the Academic Grants Round. We thank Barnabè Monnot for fruitful discussions.
+## Acknowledgments
+The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, part of the Informatics Department and Blockchain Center of the University of Zurich. The work was supported by a grant from the Ethereum Foundation as part of the Academic Grants Round. We thank Barnabè Monnot for fruitful discussions.
