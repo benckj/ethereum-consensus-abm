@@ -93,6 +93,15 @@ no_neighs,no_nodes,tau_block,tau_attestation,Xi
 `Xi` is an output result: is a function computed on the final result of the simulation for a specific set of parameters(defined on the same row).
 In the specific `Xi` is the ratio of blocks in the mainchain over the total blocks produced in the simulation.
 
+## Visualization
+Using `pyspg` we can hastly generate plots to get an idea of the experiments results at a first glance.
+Continuing with the experiment parameters we set in the previous section, the command to plot is:
+```
+spg-plotter.py --mean main.spg
+```
+In this case you are plotting the averages (on all repetitions) for a fixed set of parameters.
+`spg-plotter` has options you may explore by running `spg-plotter.py --help`.
+
 ## Experiments folder
 This folder contains some pre-defined experiments to help you understand how the repository works.
 In order to obtain the resulta from the previous section you just need to move into the folder `experiments` and run the appropriate command:
@@ -102,6 +111,13 @@ python3 ../ethereum_abm.py --repeat=2 --workers=32 tutorial.spg
 ```
 `tutorial.spg` is the `.spg` file containing the input parameters definitions used in previous section.
 This is also a good method to check everything works smoothly.
+In a similar fashion, `tutorial_plot_no_neighs_no_nodes.pdf` is the plot resulting on the visualization section, obtained by running
+```
+cd experiments
+spg-plotter.py --mean tutorial.spg
+```
+The result look like this:
+![Tutorial results plot](experiments/tutorial_plot_no_neighs_no_nodes.pdf)
 
 ## TODO for future extensions
 - simulate reorg attacks [add reference]
