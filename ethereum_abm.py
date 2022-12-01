@@ -1,19 +1,19 @@
 """
     copyright 2022 uzh
-    This file is part of EthereumPOS.
+    This file is part of ethereum-consensus-abm.
 
-    EthereumPOS is free software: you can redistribute it and/or modify
+    ethereum-consensus-abm is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    EthereumPOS is distributed in the hope that it will be useful,
+    ethereum-consensus-abm is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with EthereumPOS.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethereum-consensus-abm.  If not, see <http://www.gnu.org/licenses/>.
 """
 from spg.runner import SingleRunner
 from eth_base import Model
