@@ -1,3 +1,5 @@
+[![License: GPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+
 # ethereum-consensus-abm
 The scope of this repository is to provide the interested users with a simple and efficient 
 tool to simulate Ethereum Proof-of-stake consensus.
