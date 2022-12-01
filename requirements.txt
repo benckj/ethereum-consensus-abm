@@ -1,21 +1,22 @@
-Package         Version
---------------- -------
-contourpy       1.0.6
-cycler          0.11.0
-fonttools       4.38.0
-kiwisolver      1.4.4
-matplotlib      3.6.2
-networkx        2.8.8
-numpy           1.23.5
-packaging       21.3
-pandas          1.5.2
-Pillow          9.3.0
-pip             20.3.4
-pkg-resources   0.0.0
-pyparsing       3.0.9
-PySPG           5.0.2
-python-dateutil 2.8.2
-pytz            2022.6
-setuptools      44.1.1
-six             1.16.0
-tqdm            4.64.1
+attrs==22.1.0
+contourpy==1.0.6
+cycler==0.11.0
+exceptiongroup==1.0.4
+fonttools==4.38.0
+iniconfig==1.1.1
+kiwisolver==1.4.4
+matplotlib==3.6.2
+networkx==2.8.8
+numpy==1.23.5
+packaging==21.3
+pandas==1.5.2
+Pillow==9.3.0
+pluggy==1.0.0
+pyparsing==3.0.9
+PySPG==5.0.2
+pytest==7.2.0
+python-dateutil==2.8.2
+pytz==2022.6
+six==1.16.0
+tomli==2.0.1
+tqdm==4.64.1

@@ -1,4 +1,4 @@
-# EthereumPOS
+# ethereum-consensus-abm
 The scope of this repository is to provide the interested users with a simple and efficient 
 tool to simulate Ethereum Proof-of-stake consensus.
 We developed a very simple agent-based model in order to simulate the protocol described [by combining GHOST and Casper](https://arxiv.org/abs/2003.03052).
@@ -13,12 +13,12 @@ experiments on multiple parameters set in parallel.
 
 ## Install required libraries
 Tested. on `python 3.9.2`.
-The instructions will assume you are using a terminal, and a Unix-like OS.
+The instructions will assume you are using a terminalnd a Unix-like OS.
 
 Clone locally the repository and move in the cloned directory:
 ```
-git clone https://github.com/benckj/EthereumPOS
-cd EthereumPOS
+git clone https://github.com/nicoloval/ethereum-consensus-abm
+cd ethereum-consensus-abm
 ```
 Install a virtual environment to manage the python modules for the project.
 We are going to cal our virtual environment `eth-env`:
@@ -28,7 +28,7 @@ python3 -m venv eth-env
 Activate the virtual environment and install the required modules:
 ```
 source eth-env/bin/activate
-pip3 install requirements.txt
+pip3 install -r requirements.txt
 ```
 p.s. 
 
@@ -128,7 +128,7 @@ cd experiments
 spg-plotter.py --mean tutorial.spg
 ```
 The result look like this:
-![Tutorial results plot](experiments/tutorial_plot_no_neighs_no_nodes.pdf)
+![Tutorial results plot](https://github.com/nicoloval/ethereum-consensus-abm/blob/main/experiments/tutorial_plot_no_neighs_no_nodes.pdf)
 
 ## TODO for future extensions
 - simulate reorg attacks [add reference]
@@ -151,9 +151,9 @@ The result look like this:
 
 ## Authors
 You can contact us for any inquiry at:
-- Nicolo' Vallarano: vallarano `at` ifi.uzh.ch
-- Caspar Schwarz-Schilling
-- Benjamin Kraner
+- Nicolo' Vallarano: vallarano `at` ifi.uzh.ch, [nicoloval](https://github.com/nicoloval)
+- Caspar Schwarz-Schilling: [casparschwa](https://github.com/casparschwa)
+- Benjamin Kraner: [benckj](https://github.com/benckj)
 
 ## Acknowledgments
 The software was developed under the supervision of Claudio Tessone. It was developed at the Blockchain and Distributed Ledger Technologies group, part of the Informatics Department and Blockchain Center of the University of Zurich. The work was supported by a grant from the Ethereum Foundation as part of the Academic Grants Round. We thank Barnabé Monnot for fruitful discussions.
