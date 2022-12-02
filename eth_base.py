@@ -511,7 +511,9 @@ def lmd_ghost(blockchain, attestations):
     max_heads = [key for key, value
                  in heads_of_chains.items() if value == max_lmd_val]
     # introduce tiebreaker
-    sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
+    # sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
+    # TODO: use the rng
+    sorted_max_heads = np.random.shuffle(max_heads)
     return sorted_max_heads[0]
 
 
