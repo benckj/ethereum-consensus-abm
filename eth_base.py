@@ -114,28 +114,28 @@ class SlotBoundary(FixedTimeEvent):
     def event(self):
 
         for v in self.epoch_boundary.committees[
-                self.counter // self.epoch_boundary.slots_per_epoch]:
+                self.counter % self.epoch_boundary.slots_per_epoch]:
             v.is_attesting = True
 
         proposer = self.rng.choice(self.validators)
         proposer.propose_block()
 
-        print('Block proposed')
+        #print('Block proposed')
 
 
 class EpochBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, rng=None):
-        super().__init__(interval, rng=rng)
+    def __init__(self, slot_interval, validators, slots_per_epoch, rng=None):
+        super().__init__(slot_interval*slots_per_epoch, rng=rng)
         self.validators = validators
         self.committees = []
 
-        self.slots_per_epoch = 32
+        self.slots_per_epoch = slots_per_epoch
         self.v_n = len(self.validators)
         self.committee_size = int(self.v_n/self.slots_per_epoch)
         self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
 
     def event(self):
-        print(self.validators)
+        #print(self.validators)
         self.rng.shuffle(self.validators)
         self.committees = [[self.validators[v+c*self.committee_size]
                             for v in range(self.committee_size)]
@@ -149,7 +149,7 @@ class EpochBoundary(FixedTimeEvent):
         for v in self.validators:
             v.is_attesting = False
 
-        print('New Epoch: Committees formed')
+        #print('New Epoch: Committees formed')
 
 
 class AttestationBoundary(FixedTimeEvent):
@@ -232,12 +232,12 @@ class Node:
 
     def propose_block(self):
         head_of_chain = self.use_lmd_ghost()
-        print('this is head', head_of_chain, ' by ', self)
-        print('Block predecessors', head_of_chain.predecessors)
+        #print('this is head', head_of_chain, ' by ', self)
+        #print('Block predecessors', head_of_chain.predecessors)
 
         new_block = Block(emitter=self, parent=head_of_chain,
                           slot_no=self.model.slot_boundary.counter)
-        print('new_block pre', new_block.predecessors)
+        #print('new_block pre', new_block.predecessors)
 
         self.local_blockchain.add(new_block)
         self.global_blockchain.append(new_block)
@@ -388,6 +388,7 @@ class Model:
 
         self.tau_block = tau_block
         self.tau_attest = tau_attest
+        self.slots_per_epoch = 1
 
         self.blockchain = [Block()]
         self.network = Network(graph)
@@ -411,8 +412,9 @@ class Model:
             tau=self.tau_attest,
             edges=self.edges)
 
-        self.epoch_boundary = EpochBoundary(32*12,
-                                            self.validators,
+        self.epoch_boundary = EpochBoundary(slot_interval=12,
+                                            validators=self.validators,
+                                            slots_per_epoch=self.slots_per_epoch,
                                             rng=self.rng)
 
         self.slot_boundary = SlotBoundary(12, self.validators,

@@ -57,7 +57,7 @@ def __set_up_topology(parameters):
             [desired_avg_degree for i in range(number_of_nodes)])
 
     elif topology == "ER":
-        p = desired_avg_degree / number_of_nodes
+        p = desired_avg_degree / (number_of_nodes - 1)
         net_p2p = nx.fast_gnp_random_graph(number_of_nodes, p)
 
     elif topology == "BA":
