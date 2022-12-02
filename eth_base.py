@@ -228,6 +228,7 @@ class Node:
         self.neighbors = set()  # set of neighbours peers on the p2p network
 
         self.attestations = {}
+        self.cached_attestations = {}
         self.is_attesting = True
 
     def propose_block(self):
@@ -249,19 +250,48 @@ class Node:
 
     def receive_attestations(self, attestations):
         attestations_old = self.attestations.copy()
-        self.attestations.update(attestations)
+        attestations_with_known_blocks = {}
+
+        for k, v in attestations.items():
+            # check if block is known
+            if v[0] not in self.local_blockchain:
+                if k in self.cached_attestations.keys():
+                    # check if slot is higher of the new attestation
+                    if self.cached_attestations[k][1]<v[1]:
+                        self.cached_attestations[k] = v
+                else:
+                    self.cached_attestations[k]=v
+            else:
+                attestations_with_known_blocks[k]=v
+
+        self.attestations.update(attestations_with_known_blocks)
+        
+        # check for whether all the attestations belong to a newer slot
         for k, v in attestations_old.items():
             if attestations_old[k][1] > self.attestations[k][1]:
                 self.attestations[k] = attestations_old[k]
+
+    def check_cached_attestations(self):
+        _cached_attestations = self.cached_attestations.copy()
+        for k,v in _cached_attestations.items():
+            if v[0] in self.local_blockchain:
+                # delete from cache
+                _ = self.cached_attestations.pop(k, 'None')
+                #check if other attest from validator
+                if k in self.attestations.keys():
+                    # check issuing slot
+                    if self.attestations[k][1]<v[1]:
+                        self.attestations[k]=v
+                else:
+                    self.attestations[k]=v
 
     def update_local_blockchain(self, block):
         """
         When self.Node receive a new block,
         update the local copy of the blockchain.
         """
-        while block not in self.local_blockchain:
-            self.local_blockchain.add(block)
-            block = block.parent
+        self.local_blockchain = self.local_blockchain.union(block)
+        self.check_cached_attestations()
 
     # TODO: gossip blocks, naming should be changed accordingly
     def gossip(self, listening_node):
@@ -273,7 +303,7 @@ class Node:
         """Receive new block and update local information accordingly.
         """
         block = gossiping_node.use_lmd_ghost()
-        self.update_local_blockchain(block)
+        self.update_local_blockchain(gossiping_node.local_blockchain)
 
         if self.is_attesting is True:
             self.issue_attestation()
@@ -513,58 +543,9 @@ def lmd_ghost(blockchain, attestations):
     # introduce tiebreaker
     # sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
     # TODO: use the rng
-    sorted_max_heads = np.random.shuffle(max_heads)
+    np.random.shuffle(max_heads)
+    sorted_max_heads = max_heads
     return sorted_max_heads[0]
-
-
-def lmd_ghost_needs_debug_not_used(blockchain,
-                                   attestations,
-                                   stake=simple_attestation_evaluation):
-    attestations = {k: v[0] for k, v in attestations.items()}
-    leaves = find_leaves_of_blockchain(blockchain)
-    if len(leaves) == 1:
-        return leaves.pop()
-
-    inverse_attestations = {}
-    for n, b in attestations.items():
-        inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
-
-    attested_blocks = set(inverse_attestations.keys())
-    if len(attested_blocks) == 0:
-        return next(iter(blockchain))
-
-    lowest_attestation = next(iter(attested_blocks))
-    for b in attested_blocks:
-        if b.height < lowest_attestation.height:
-            lowest_attestation = b
-
-    if lowest_attestation.height == 0:
-        cut_trees_per_leave = {b: b.predecessors.copy() for b in leaves}
-    else:
-        cut_trees_per_leave = {b: b.predecessors -
-                               lowest_attestation.parent.predecessors
-                               for b in leaves}
-
-    attested_blocks_per_leaf = {b: cut_trees_per_leave[b] & attested_blocks
-                                for b in leaves}
-    attested_blocks_per_leaf = {b: n for b, n in
-                                attested_blocks_per_leaf.items() if n}
-    if attested_blocks_per_leaf.keys() == 1:
-        return next(iter(attested_blocks_per_leaf.keys()))
-
-    leaves_with_attestations = set(attested_blocks_per_leaf.keys())
-
-    attestations_per_leaf = {b: [inverse_attestations[x]
-                                 for x in attested_blocks_per_leaf[b]]
-                             for b in leaves_with_attestations}
-    attestations_per_leaf = {b: [node for nodes in n for node in nodes]
-                             for b, n in attestations_per_leaf.items()}
-
-    sum_attestations_per_leaf = {b: sum([simple_attestation_evaluation(n)
-                                         for n in attestations_per_leaf[b]])
-                                 for b in leaves_with_attestations}
-    return max(sum_attestations_per_leaf, key=sum_attestations_per_leaf.get)
-
 
 def blockchain_to_digraph(blockchain):
     leaves = find_leaves_of_blockchain(blockchain)
