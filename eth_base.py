@@ -455,9 +455,13 @@ class Model:
         --------
         results : dictionary
         """
+        # attestations from a god pov
+        # for each node we have the latest attestations issued by the node
+        god_view_attestations = {node: node.attestations[node] for node in self.validators}
+
         results_dict = {
-            "mainchain_rate": calculate_mainchain_rate(self.blockchain),
-            "branch_rate": calculate_branch_ratio(self.blockchain)
+            "mainchain_rate": calculate_mainchain_rate(self.blockchain, god_view_attestations),
+            "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations)
             }
         return results_dict
 
@@ -603,7 +607,7 @@ def calculate_mainchain_rate(blockchain, attestations):
     return len(main_chain)/len(blockchain)
 
 
-def calculate_branch_rate(blockchain, attestations):
+def calculate_branch_ratio(blockchain, attestations):
     """Compute the branch Ratio, which measures how often forks hap-
     pen
 

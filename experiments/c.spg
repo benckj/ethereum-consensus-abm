@@ -1,5 +1,5 @@
 @execute ethereum_abm.py
-:network_topology ER 
+:network_topology BA
 :simulation_time 3e2
 .no_neighs 3
 .no_nodes 64
