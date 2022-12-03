@@ -94,8 +94,8 @@ class FixedTimeEvent():
 
     def trigger(self, next_time):
         while next_time > self.next_event:
-            self.event()
             self.counter += 1
+            self.event()
             self.next_event += self.interval
 
             return True
@@ -302,11 +302,13 @@ class Node:
     def listen(self, gossiping_node):
         """Receive new block and update local information accordingly.
         """
-        block = gossiping_node.use_lmd_ghost()
+        #block = gossiping_node.use_lmd_ghost()
         self.update_local_blockchain(gossiping_node.local_blockchain)
 
         if self.is_attesting is True:
-            self.issue_attestation()
+            for b in self.local_blockchain:
+                if b.slot_no == self.model.slot_boundary.counter:
+                    self.issue_attestation()
 
     def use_lmd_ghost(self):
         return lmd_ghost(self.local_blockchain, self.attestations)
