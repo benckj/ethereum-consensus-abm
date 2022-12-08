@@ -53,4 +53,4 @@ def test_0():
     }
 
     # testing
-    assert(sample.calculate_branch_rate(mock_blockchain, mock_attestations) == 1/3)
+    assert(sample.calculate_branch_ratio(mock_blockchain, mock_attestations) == 1/3)

@@ -182,8 +182,6 @@ class Block:
 
         self.children = set()
         self.parent = parent
-        # TODO: do we need it twice?
-        self.slot_no = slot_no
 
         if parent is None:
             self.parent = None
@@ -495,7 +493,8 @@ class Model:
 
         results_dict = {
             "mainchain_rate": calculate_mainchain_rate(self.blockchain, god_view_attestations),
-            "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations)
+            "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations),
+            "blocktree_entropy": calculate_calculate_entropy(self.blockchain)
             }
         return results_dict
 
@@ -626,3 +625,16 @@ def calculate_branch_ratio(blockchain, attestations):
                 counter += 1
 
     return counter/len(main_chain)
+
+
+def calculate_entropy(blockchain):
+    """Compute the entropy of the in-degree distribution of the blocktree
+    """
+    # compute the degree frequency
+    degrees = np.array([len(block.children) for block in blockchain])
+    degrees_unique, degrees_counts  = np.unique(degrees, return_counts=True)
+    degrees_frequencies = degrees_counts/degrees_counts.sum()
+    tmp = 0
+    for prob in degrees_frequencies:
+        tmp -= prob*np.log(prob)
+    return tmp

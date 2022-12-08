@@ -1,2 +1,3 @@
 mainchain_rate: help = 1-orphan rate
 branch_ratio: help = branching ratio
+blocktree_entropy: help = branching ratio
