@@ -93,9 +93,9 @@ class FixedTimeEvent():
         self.counter = 0
 
     def trigger(self, next_time):
-        while next_time > self.next_event:
-            self.counter += 1
+        while next_time >= self.next_event:
             self.event()
+            self.counter += 1
             self.next_event += self.interval
 
             return True
@@ -463,7 +463,6 @@ class Model:
         self.time = 0
 
     def run(self, stoping_time):
-
         while self.time < stoping_time:
             # generate next random increment time and save it in self.increment
             increment = self.gillespie.calculate_time_increment()
@@ -477,6 +476,22 @@ class Model:
             next_process.event()
 
             self.time += increment
+
+            # to increase performance
+            flag_blocks_are_the_same = True
+            flag_attestations_are_the_same = True
+            for n in self.nodes[1:]:
+                if self.nodes[0].local_blockchain != n.local_blockchain:
+                    flag_blocks_are_the_same = False
+                    break
+                if self.nodes[0].attestations != n.attestations:
+                    flag_attestations_are_the_same = False
+                    break
+
+            if flag_blocks_are_the_same and flag_attestations_are_the_same:
+                self.time = min([fixed.next_event for fixed in self.fixed_events])
+
+
 
     def results(self):
         """This functions returns a dictionary containing the
@@ -494,7 +509,7 @@ class Model:
         results_dict = {
             "mainchain_rate": calculate_mainchain_rate(self.blockchain, god_view_attestations),
             "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations),
-            "blocktree_entropy": calculate_calculate_entropy(self.blockchain)
+            "blocktree_entropy": calculate_entropy(self.blockchain)
             }
         return results_dict
 
