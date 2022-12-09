@@ -95,7 +95,7 @@ class FixedTimeEvent():
     def trigger(self, next_time):
         while next_time >= self.next_event:
             self.counter += 1
-	    self.event()
+	        self.event()
             self.next_event += self.interval
 
             return True
