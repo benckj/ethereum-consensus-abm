@@ -94,8 +94,8 @@ class FixedTimeEvent():
 
     def trigger(self, next_time):
         while next_time >= self.next_event:
-            self.event()
             self.counter += 1
+	    self.event()
             self.next_event += self.interval
 
             return True
@@ -176,7 +176,7 @@ class Block:
         Number of transactions in the block
     '''
 
-    def __init__(self, emitter="genesis", parent=None, slot_no=-1):
+    def __init__(self, emitter="genesis", parent=None, slot_no=0):
 
         self.slot_no = slot_no
 
