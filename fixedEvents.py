@@ -1,4 +1,5 @@
 from threading import Timer
+from constants import *
 
 
 class FixedTimeEvent():
@@ -34,28 +35,27 @@ class EpochBoundary(FixedTimeEvent):
     def __init__(self, interval, validators, rng=None):
         super().__init__(interval, rng=rng)
         self.validators = validators
-        self.comittees = []
+        self.committees = []
         self.proposers = []
 
-        self.slots_per_epoch = 32
         self.v_n = len(self.validators)
-        self.committee_size = int(self.v_n/self.slots_per_epoch)
-        self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
+        self.committee_size = int(self.v_n/SLOTS_PER_EPOCH)
+        self.leftover = self.v_n - (self.committee_size * SLOTS_PER_EPOCH)
 
     def event(self):
         self.rng.shuffle(self.validators)
-        self.comittees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)]
-                          for c in range(self.slots_per_epoch)]
+        self.committees = [[self.validators[v+c*self.committee_size] for v in range(self.committee_size)]
+                           for c in range(SLOTS_PER_EPOCH)]
 
         self.proposers = [self.rng.choice(self.validators)
-                          for c in range(self.slots_per_epoch)]
+                          for c in range(SLOTS_PER_EPOCH)]
 
-        j = list(range(self.slots_per_epoch))
+        j = list(range(SLOTS_PER_EPOCH))
         self.rng.shuffle(j)
         for i in range(1, self.leftover+1):
-            self.comittees[j[i-1]].append(self.validators[-i])
+            self.committees[j[i-1]].append(self.validators[-i])
 
-        print(self.comittees, self.proposers)
+        print(self.committees, self.proposers)
         print('New Epoch: Committees formed')
 
 
@@ -67,19 +67,15 @@ class SlotBoundary(FixedTimeEvent):
 
     def event(self):
         proposer = self.epoch_boundary.proposers[self.counter %
-                                                 self.epoch_boundary.slots_per_epoch]
-        proposer.propose_block('E{}_S{}'.format(
+                                                 SLOTS_PER_EPOCH]
+        proposer.propose_block(self.counter, 'E{}_S{}'.format(
             self.epoch_boundary.counter, self.counter))
-        print('Block proposed {}'.format(proposer.local_blockchain))
 
-        # schedule = Timer(4, self.activate_attesting)
-        # schedule.start()
-        self.activate_attesting()
+        print('Proposer Node {}: Consensus View {}'.format(
+            self.epoch_boundary.proposers[self.counter %
+                                          SLOTS_PER_EPOCH], self.epoch_boundary.proposers[self.counter %
+                                                                                          SLOTS_PER_EPOCH].gasper.consensus_chain, ))
 
-    def activate_attesting(self):
-        print('activating attesting for slot:{}'.format(self.counter))
-        for v in self.epoch_boundary.comittees[self.counter % self.epoch_boundary.slots_per_epoch]:
-            v.is_attesting = True
 
 
 class AttestationBoundary(FixedTimeEvent):
@@ -89,6 +85,7 @@ class AttestationBoundary(FixedTimeEvent):
         self.epoch_boundary = epoch_boundary
 
     def event(self):
-        print(' attesting in the fixed event')
-        for v in [v for v in self.epoch_boundary.comittees[self.slot_boundary.counter % self.epoch_boundary.slots_per_epoch] if v.is_attesting == True]:
-            v.attestations_ledger.attest()
+        for v in [v for v in self.epoch_boundary.committees[self.slot_boundary.counter % SLOTS_PER_EPOCH]]:
+            print('Proposer Node {}: Consensus View {}'.format(v, v.gasper.consensus_chain, ))
+            print('Called node {} for attesting'.format(v))
+            v.attest(self.slot_boundary.counter)

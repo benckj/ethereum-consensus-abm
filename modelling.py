@@ -3,7 +3,6 @@ import numpy as np
 
 from constants import *
 from base_utils import *
-from malicious_node import *
 from Gillespie import *
 from fixedEvents import *
 from randomProcess import *
@@ -28,17 +27,17 @@ class Model:
         self.tau_block = tau_block
         self.tau_attest = tau_attest
 
-        self.blockchain = [Block('0', 'genesis')]
+        self.blockchain = [Block('-1', 'genesis', -1)]
         self.network = Network(graph)
+
         self.no_of_malicious_nodes = np.floor(
             malicious_percent * len(self.network)).astype(int)
+
         self.no_of_nodes = len(self.network) - self.no_of_malicious_nodes
 
         self.nodes = []
         self.nodes.extend([Node(self.blockchain, rng=self.rng)
                            for i in range(self.no_of_nodes)])
-        self.nodes.extend([MaliciousNode(self.blockchain, rng=self.rng)
-                           for i in range(self.no_of_malicious_nodes)])
 
         self.validators = self.nodes
 
@@ -48,7 +47,7 @@ class Model:
         self.block_gossip_process = BlockGossipProcess(
             tau=self.tau_block, edges=self.edges)
         self.attestation_gossip_process = AttestationGossipProcess(
-            tau=self.tau_attest, nodes=self.edges)
+            tau=self.tau_attest, edges=self.edges)
 
         self.epoch_boundary = EpochBoundary(
             SLOTS_PER_EPOCH*SECONDS_PER_SLOT, self.validators, rng=self.rng)
@@ -77,7 +76,7 @@ class Model:
 
             # select poisson process and trigger selected process
             next_process = self.gillespie.select_event()
-            next_process.event(self.time // SECONDS_PER_SLOT)
+            next_process.event(int(self.time) // SECONDS_PER_SLOT)
 
             self.time += increment
 
@@ -116,4 +115,4 @@ if __name__ == "__main__":
         tau_attest=1
     )
     model.run(1e2)
-    model.results()
+    # model.results()

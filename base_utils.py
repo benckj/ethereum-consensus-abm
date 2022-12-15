@@ -39,7 +39,9 @@ class Block:
     Class for blocks.
 
     INPUT:
+    value            - blocks values (this is arbitray value) used to differentiate the generation.
     emitter          - List of objects
+    slot             - slot of the block
     parent           - Block object (parent of the block)
     transactions     - Number (integer) of transactions in the block
     '''
@@ -90,7 +92,6 @@ class Attestation():
     - attestor,  Node object
     - block,     Block object
     """
-    __slots__ = ('attestor', 'block')
 
     def __init__(self, attestor, block, slot):
         self.attestor = attestor
@@ -130,83 +131,101 @@ class Node:
         self.gasper = Gasper(block[0])
         self.attestations = {}  # {slot: {node:block}}
 
-        self.local_blockchain = {block[0]}
-        self.global_blockchain = block
+        self.local_blockchain = [block[0]]
+        self.global_blockchain = {-1: block[0]}
 
         self.is_attesting = False
         self.neighbors = set()  # set of neighbours peers on the p2p network
         self.gossip_data = {}  # {slot: {"block": block, "attestations": []}}
 
     def use_lmd_ghost(self):
-        self.gasper.lmd_ghost(self, self.attestations)
+        self.gasper.lmd_ghost(self.attestations)
         self.global_blockchain = self.gasper.consensus_chain
         return self.gasper.get_head_block()
 
     def propose_block(self, slot, value):
         head_slot, head_block = self.use_lmd_ghost()
+        if head_slot >= slot:
+            raise "Syncing Issue"
 
         # check if the slot is colliding
         new_block = Block(value, emitter=self, slot=slot,
                           parent=head_block)
-        self.local_blockchain.add(new_block)
+        print('Block proposed {} in slot {} by {}'.format(new_block, slot, self))
+        self.local_blockchain.append(new_block)
 
-        self.gossip_data[slot]["block"] = new_block
+        self.gossip_data[slot] = {"block": new_block}
 
-    def gossip_block(self, slot, listening_node):
+    def gossip_block(self, listening_node, slot):
         listening_node.listen_block(self, slot)
 
     def listen_block(self, gossiping_node, slot):
         """Receive new block and update local information accordingly.
         """
-        listened_block = gossiping_node.gossip_data[slot]["blocks"]
 
-        # Add to local of the node
-        self.local_blockchain.add(listened_block)
+        if (slot not in gossiping_node.gossip_data.keys()) or ("block" not in gossiping_node.gossip_data[slot].keys()):
+            return
 
-        # Gossip the listened block,
-        if ~bool(gossiping_node.gossip_data[slot]):
-            self.gossip_data[slot] = listened_block
+        listened_block = gossiping_node.gossip_data[slot]["block"]
+
+        if listened_block not in self.local_blockchain:
+            # Add to local of the node
+            self.local_blockchain.append(listened_block)
+
+            # Gossip the listened block,
+            self.gossip_data[slot] = {"block": listened_block}
 
         # Attest if the node is in committee
         if self.is_attesting == True:
-            if self.attestations[slot][self]:
+            if slot in self.attestations.keys() and self in self.attestations[slot].keys():
                 return
-            self.attest()
+            self.attest(slot)
 
-    def attest(self):
+    # Should take a new incoming block into consideration
+    def attest(self, slot):
         """Create the Attestation for the current head of the chain block.
         """
         # Call Consensus
         # Fetch the Block and then Attest
-        attesting_slot, attesting_block = self.use_lmd_ghost()
-        print('Block attested {} by node {}'.format(
-            attesting_block, attesting_slot, ))
+        attesting_slot, attesting_block = slot, self.gasper.get_block2attest(
+            self.local_blockchain.copy().pop(), self.attestations)
+        print('Block attested {} in slot {} by {}'.format(
+            attesting_block, attesting_slot, self))
         attestation = Attestation(self, attesting_block, attesting_slot)
+
+        if attestation.slot not in self.attestations.keys():
+            self.attestations[attestation.slot] = {}
         self.attestations[attestation.slot][attestation.attestor] = attestation.block
 
         # Create the attestation for this slot
-        if len(self.gossip_data[attestation.slot]["attestations"]) == 0:
-            self.gossip_data[attestation.slot]["attestations"] = set()
+        if attestation.slot not in self.gossip_data.keys() or "attestations" not in self.gossip_data[attestation.slot].keys():
+            self.gossip_data[attestation.slot] = {"attestations": set()}
 
         # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(
-            tuple(attestation.slot, attestation.attestor, attestation.block))
+            tuple([attestation.slot, attestation.attestor, attestation.block]))
         self.is_attesting = False  # As a node has to attest only once in a slot
 
     def gossip_attestation(self, listening_node, slot):
-        listening_node.listen_attestation(self,slot)
+        listening_node.listen_attestation(self, slot)
 
     def listen_attestation(self, gossiping_node, slot):
         # if head block is the parent of the new block then vote for it or else check attestations of that block as the node knows.
-        if len(gossiping_node.gossip_data[slot]["attestations"]) == 0:
+        if slot not in gossiping_node.gossip_data.keys() or "attestations" not in gossiping_node.gossip_data[slot].keys():
             return
-        listened_attestations = gossiping_node.gossip_data[slot]["attestations"]
+        listened_attestations = gossiping_node.gossip_data[
+            slot]["attestations"]
 
         for l_slot, l_node, l_block in listened_attestations:
+            if l_slot not in self.attestations.keys():
+                self.attestations[l_slot] = {}
             self.attestations[l_slot][l_node] = l_block
 
         # Copy the attestation to gossip
-        self.gossip_data.update(listened_attestations)  # init to send it out
+        if slot not in self.gossip_data.keys() or "attestations" not in self.gossip_data[slot].keys():
+            self.gossip_data[slot] = {"attestations": set()}
+        self.gossip_data[slot]["attestations"].update(
+            listened_attestations)  # init to send it out
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)
