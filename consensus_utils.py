@@ -8,7 +8,6 @@ FUNCTIONS
 LMD Ghost following functions handle LMD Ghost Evaluation of Blocks
 '''
 
-
 class Gasper:
     finalized_head_slot = -1
     consensus_chain = {}
@@ -58,7 +57,7 @@ class Gasper:
 
         return [block for block, weights in block_w_weights.items() if weights == max(block_w_weights.values())][0]
 
-    def last_consensus_slot(self,slot):
+    def last_consensus_slot(self, slot):
         if slot in self.consensus_chain.keys():
             return slot
         else:
@@ -95,7 +94,7 @@ class Gasper:
 
         # If there is an attestation already for this block, The block has a chance to be in consensus_chain.
         # So we will check if the consensus_chain contains this block and return based on it
-        if len([v for k, v in self.consensus_chain.items()  if v == block]):
+        if len([v for k, v in self.consensus_chain.items() if v == block]):
             return block
 
         # If the block produced is under the head of the canonical chain then return the block
@@ -132,7 +131,7 @@ class Gasper:
         #             # As proposer boost is not there in the implementation, now compare just weights of both forks from the common block.
         #             return current_head
 
-        return current_head
+        return current_head_block
 
     def calculate_mainchain_rate(self, local_blockchain):
         """Compute the ratio of blocks in the mainchain over the total
