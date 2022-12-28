@@ -1,0 +1,21 @@
+import unittest
+from unit_tests.lmdghost_test import *
+from unit_tests.exante_reorg_test import *
+
+
+def suite():
+    suite = unittest.TestSuite()
+    suite.addTest(GHOST_TestCase('test_setup'))
+    suite.addTest(GHOST_TestCase('test_onelevel_heavyweight'))
+    suite.addTest(GHOST_TestCase('test_onelevel_tieweight'))
+    suite.addTest(GHOST_TestCase('test_twolevel_heavyweight'))
+    suite.addTest(GHOST_TestCase('test_threelevel_heavyweight'))
+    suite.addTest(ExAnteReOrg_TestCase('produce_emptyslot'))
+    suite.addTest(ExAnteReOrg_TestCase('produce_emptySlot_and_blockinlater'))
+    suite.addTest(ExAnteReOrg_TestCase('reorg'))
+    return suite
+
+
+if __name__ == '__main__':
+    runner = unittest.TextTestRunner()
+    runner.run(suite())
