@@ -1,12 +1,12 @@
 import networkx as nx
 import numpy as np
 
-from agent.constants import *
-from agent.base_utils import *
-from Gillespie import *
-from agent.fixedEvents import *
-from agent.randomProcess import *
-from agent.node import *
+from .constants import *
+from .base_utils import *
+from .Gillespie import *
+from .fixedEvents import *
+from .randomProcess import *
+from .node import *
 
 
 class Model:
@@ -20,8 +20,8 @@ class Model:
                  graph=None,
                  tau_block=None,
                  tau_attest=None,
+                 malicious_percent=0,
                  seed=None,
-                 malicious_percent=0
                  ):
 
         self.tau_block = tau_block
@@ -67,17 +67,20 @@ class Model:
 
         self.epoch_event = EpochEvent(
             SLOTS_PER_EPOCH*SECONDS_PER_SLOT, self.validators, rng=self.rng)
-        
+
         self.slot_event = SlotEvent(
             SECONDS_PER_SLOT, self.validators, self.epoch_event, rng=self.rng)
 
         self.attestation_event = AttestationEvent(
             SECONDS_PER_SLOT, offset=4, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
 
-        self.adversary_event = AdversaryEvent(SECONDS_PER_SLOT, offset=5, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
+        self.adversary_event = AdversaryEvent(
+            SECONDS_PER_SLOT, offset=5, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
 
-        self.processes = [self.block_gossip_process, self.attestation_gossip_process]
-        self.fixed_events = [self.epoch_event, self.slot_event, self.attestation_event, self.adversary_event]
+        self.processes = [self.block_gossip_process,
+                          self.attestation_gossip_process]
+        self.fixed_events = [self.epoch_event, self.slot_event,
+                             self.attestation_event, self.adversary_event]
 
         self.gillespie = Gillespie(self.processes, self.rng)
         self.time = 0
@@ -122,7 +125,7 @@ class Model:
             "mainchain_rate": rng_node.gasper.calculate_mainchain_rate(god_view_blocks),
             "branch_ratio": rng_node.gasper.calculate_branch_ratio(god_view_blocks),
             "blocktree_entropy": rng_node.gasper.calculate_entropy(god_view_blocks)
-            }
+        }
         return results_dict
 
 
