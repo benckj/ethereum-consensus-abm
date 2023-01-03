@@ -1,6 +1,9 @@
 import unittest
 from unit_tests.lmdghost_test import *
 from unit_tests.exante_reorg_test import *
+from unit_tests.branchratio_calculation_test import *
+from unit_tests.entropy_calculation_test import *
+from unit_tests.mainchainrate_calculation_test import *
 
 
 def suite():
@@ -13,6 +16,9 @@ def suite():
     suite.addTest(ExAnteReOrg_TestCase('produce_emptyslot'))
     suite.addTest(ExAnteReOrg_TestCase('produce_emptySlot_and_blockinlater'))
     suite.addTest(ExAnteReOrg_TestCase('reorg'))
+    suite.addTest(BranchRatio_TestCases('test'))
+    suite.addTest(Entropy_TestCases('test'))
+    suite.addTest(MainChainRate_TestCases('test'))
     return suite
 
 
