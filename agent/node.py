@@ -62,7 +62,8 @@ class Node:
         # add block to local blockchain
         self.update_local_blockchain(new_block)
 
-        # [TODO] How to add the block to consensus chain when node is proposing
+        # [TODO] How to add the 40% Attestation Proposer booster weight to consensus chain when node is proposing 
+        # also check this with 
 
         # add new_block to gossiping data
         self.gossip_data[slot] = {"block": new_block}
@@ -87,9 +88,6 @@ class Node:
             # Gossip the listened block,
             self.gossip_data[slot] = {"block": listened_block}
 
-        # [ToDo] Fork choice execution upon listening to a block or how does the consensus gets updated
-        # As this should either happen before they attest or propose a block
-
         # Attest if the node is in committee
         if self.is_attesting == True:
             if slot in self.attestations.keys() and self in self.attestations[slot].keys():
@@ -100,12 +98,7 @@ class Node:
     def attest(self, slot):
         """Create the Attestation for the current head of the chain block.
         """
-        # [TODO] How to decide after listening a block and attest this block.
-        # 1) Any listened block  get attested if the node did not attest on other block in the same slot.
-        # 2) RQ1:
-
-        # Fetch the Block2Attest, taking the listened blocks
-
+        # Fetch the Block2Attest, taking the listened blocks, LISTs in python behave LIFO
         attesting_slot, attesting_block = slot, self.gasper.get_block2attest(
             self.local_blockchain.copy().pop(), self.attestations)
 
@@ -119,9 +112,6 @@ class Node:
         if attestation.slot not in self.attestations.keys():
             self.attestations[attestation.slot] = {}
         self.attestations[attestation.slot][self] = attestation.block
-
-        # # perform a ghost with latest attestations
-        # self.use_lmd_ghost(slot)
 
         if attestation.slot not in self.gossip_data.keys() or "attestations" not in self.gossip_data[attestation.slot].keys():
             self.gossip_data[attestation.slot] = {"attestations": set()}
