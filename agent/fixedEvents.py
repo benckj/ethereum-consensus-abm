@@ -1,4 +1,5 @@
-from .constants import *
+from constants import *
+
 
 class FixedTimeEvent():
     def __init__(self, interval, time=0, offset=0, rng=None):
@@ -56,9 +57,10 @@ class EpochEvent(FixedTimeEvent):
 
         print(self.committees, self.proposers)
         print('New Epoch: Committees formed')
-    
+
     def __repr__(self):
         return 'Chain Epoch {}'.format(self.counter)
+
 
 class SlotEvent(FixedTimeEvent):
     def __init__(self, interval, validators, epoch_event, rng=None):
@@ -70,13 +72,17 @@ class SlotEvent(FixedTimeEvent):
     def event(self):
         print('proposing block for slot: {}'.format(self.counter))
         proposer = self.epoch_event.proposers[self.counter %
-                                                 SLOTS_PER_EPOCH]
+                                              SLOTS_PER_EPOCH]
+
+        for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH - 1]]:
+            validator_node.is_attesting = True
+
         proposer.propose_block(self.counter, 'E{}_S{}'.format(
-           self.epoch_event.counter, self.counter))
+            self.epoch_event.counter, self.counter))
 
         print('Proposer Node {}: Consensus View {} Consensus Attestations: {}'.format(
             proposer, proposer.gasper.consensus_chain, proposer.attestations))
-        
+
         malicious_committee = False
         for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]]:
             if validator_node.malicious:
@@ -84,13 +90,15 @@ class SlotEvent(FixedTimeEvent):
 
         if proposer.malicious and malicious_committee:
             self.malicious_slot = True
-            print('Malicious Node, So disabling block gossiping to honest node'.format(proposer))
-            for validator_node in proposer.malicious_neighbors: 
+            print(
+                'Malicious Node, So disabling block gossiping to honest node'.format(proposer))
+            for validator_node in proposer.malicious_neighbors:
                 validator_node.obstruct_gossiping = True
             proposer.obstruct_gossiping = True
 
     def __repr__(self):
         return 'Chain Slot {}'.format(self.counter)
+
 
 class AttestationEvent(FixedTimeEvent):
     def __init__(self, interval, offset, slot_event, epoch_event, rng=None):
@@ -100,12 +108,14 @@ class AttestationEvent(FixedTimeEvent):
 
     def event(self):
         print('providing attestation for slot: {}'.format(self.slot_event.counter))
-        for validator_node in [v for v in self.epoch_event.committees[self.slot_event.counter % SLOTS_PER_EPOCH]]:
+        for validator_node in self.epoch_event.committees[self.slot_event.counter % SLOTS_PER_EPOCH]:
+            if ~validator_node.is_attesting: 
+                continue
             print('Called node {} for attesting'.format(validator_node))
             validator_node.attest(self.slot_event.counter)
             print('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
                 validator_node, validator_node.gasper.consensus_chain, validator_node.attestations))
-    
+
     def __repr__(self):
         return 'Chain Attestation {}'.format(self.counter)
 
@@ -117,10 +127,12 @@ class AdversaryEvent(FixedTimeEvent):
         self.slot_event = slot_event
 
     def event(self):
-        if self.slot_event.malicious_slot: 
-            print('Malicious Event: release the obstruction of the gossiping the block to rest of the peers for slot: {}'.format(self.slot_event.counter))
-            proposer = self.epoch_event.proposers[self.slot_event.counter % SLOTS_PER_EPOCH]
-            for validator_node in proposer.malicious_neighbors: 
+        if self.slot_event.malicious_slot:
+            print('Malicious Event: release the obstruction of the gossiping the block to rest of the peers for slot: {}'.format(
+                self.slot_event.counter))
+            proposer = self.epoch_event.proposers[self.slot_event.counter %
+                                                  SLOTS_PER_EPOCH]
+            for validator_node in proposer.malicious_neighbors:
                 validator_node.obstruct_gossiping = False
             proposer.obstruct_gossiping = False
 

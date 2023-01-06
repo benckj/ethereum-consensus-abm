@@ -1,12 +1,12 @@
 import networkx as nx
 import numpy as np
 
-from .constants import *
-from .base_utils import *
-from .Gillespie import *
-from .fixedEvents import *
-from .randomProcess import *
-from .node import *
+from constants import *
+from base_utils import *
+from Gillespie import *
+from fixedEvents import *
+from randomProcess import *
+from node import *
 
 
 class Model:
@@ -132,8 +132,8 @@ class Model:
 if __name__ == "__main__":
     # As mentioned in the Stochatic Modelling paper,
     # the number of neighbors fixed but have to experiment multiple topologies
-    net_p2p = nx.random_degree_sequence_graph(
-        [10 for i in range(100)])
+    net_p2p = nx.barabasi_albert_graph(
+        96,5)
     lcc_set = max(nx.connected_components(net_p2p), key=len)
     net_p2p = net_p2p.subgraph(lcc_set).copy()
     net_p2p = nx.convert_node_labels_to_integers(
@@ -141,7 +141,8 @@ if __name__ == "__main__":
     model = Model(
         graph=net_p2p,
         tau_block=1,
-        tau_attest=1
+        tau_attest=1,
+        malicious_percent=0.15
     )
-    model.run(14)
+    model.run(2e2)
     print(model.results())

@@ -1,4 +1,6 @@
 import networkx as nx
+import numpy as np
+
 
 class Network:
     """Object to manage the peer-to-peer network. It is a wrapper of networkx.Graph right now.
@@ -13,31 +15,35 @@ class Network:
     def __len__(self):
         return len(self.graph)
 
-
-    def set_neighborhood(self, nodes, malicious_nodes):
+    def set_neighborhood(self, honest_nodes, malicious_nodes):
         # dictionary mapping nodes in the nx.graph to their peers on p2p graph
 
-        peers_dict = dict(zip(self.graph.nodes(), [*nodes, *malicious_nodes]))
+        # Shuffle the nodes to
+        peers_dict = dict(
+            zip(self.graph.nodes(), [*honest_nodes, *malicious_nodes]))
 
         malicious_peer_dict = {v: k for k,
-                            v in peers_dict.items() if v in malicious_nodes}
+                               v in peers_dict.items() if v in malicious_nodes}
 
         # save peer node object as an attribute of nx node
         nx.set_node_attributes(
             self.graph, values=peers_dict, name='node_mapping')
 
         for n in self.graph.nodes():
-            m = self.graph.nodes[n]["node_mapping"]
+            node_object = self.graph.nodes[n]["node_mapping"]
             # save each neighbour in the nx.Graph inside the peer node object
             for k in self.graph.neighbors(n):
-                m.neighbors.add(self.graph.nodes[k]["node_mapping"])
+                node_object.neighbors.add(self.graph.nodes[k]["node_mapping"])
 
         # save each malcious neighbour inside the peer node object and add an edge in the graph
-        for n in malicious_peer_dict.values():
-            m = self.graph.nodes[n]["node_mapping"]
-            for k in [v for v in malicious_peer_dict.values() if not v == n]:
-                m.malicious_neighbors.add(self.graph.nodes[k]["node_mapping"])
-                self.graph.add_edges_from([(n,k)])
+        for node_object in malicious_nodes:
+            for node_object2 in malicious_nodes:
+                if node_object == node_object2:
+                    continue
+                node_object.malicious_neighbors.add(node_object2)
+                self.graph.add_edges_from(
+                    [(malicious_peer_dict[node_object], malicious_peer_dict[node_object2])])
+
 
 class Block:
     '''
@@ -114,4 +120,3 @@ class Attestation():
 
     def __repr__(self):
         return '<Attestation: Block {} by node {}>'.format(self.block.id, self.slot, self.attestor.id)
-

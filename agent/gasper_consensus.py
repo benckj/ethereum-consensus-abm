@@ -1,5 +1,5 @@
 
-from .constants import *
+from constants import *
 import numpy as np
 '''
 FUNCTIONS
@@ -97,9 +97,6 @@ class Gasper:
                 slot, node_attestations, fork_choice_attestations, last_block)
             justified_slot = slot
 
-            # # Handling empty slots
-            # if heavyBlock == None:
-            #     continue
             self.consensus_chain[slot] = heavyBlock
 
             # As there is no finality gadget, this was placed here. To try to emulate similar behavior.

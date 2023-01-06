@@ -1,5 +1,5 @@
-from .base_utils import *
-from .gasper_consensus import *
+from base_utils import *
+from gasper_consensus import *
 import numpy as np
 
 
