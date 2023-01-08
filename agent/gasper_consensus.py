@@ -1,5 +1,5 @@
 
-from constants import *
+from .constants import *
 import numpy as np
 '''
 FUNCTIONS
@@ -24,7 +24,6 @@ class Gasper:
                 node_attestations in attestations.items() if slot <= needed_slot - MIN_ATTESTATION_DELAY}
 
     def get_cummulative_weight_subTree(self, slot, blockTree, fork_choice_attestations):
-        # optimize this with dynamic programming approach
         total_weights = 0
 
         if len(blockTree) == 0 or slot not in fork_choice_attestations.keys():

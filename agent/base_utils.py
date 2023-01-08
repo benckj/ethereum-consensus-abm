@@ -56,16 +56,8 @@ class Block:
     parent           - Block object (parent of the block)
     transactions     - Number (integer) of transactions in the block
     '''
-    counter = 0
-
-    @classmethod
-    def __update(cls):
-        cls.counter += 1
-
+ 
     def __init__(self, value, emitter, slot, parent=None):
-
-        self.id = self.counter
-        self.__update()
         self.children = set()
         self.parent = parent
         self.value = value
@@ -87,7 +79,7 @@ class Block:
             self.slot = slot
 
     def __repr__(self):
-        return '<Block {} (h={}) (v={})>'.format(self.id, self.slot, self.value)
+        return '<Block {} (h={}) (s={})>'.format(self.value, self.height, self.slot)
 
     def __next__(self):
         if self.parent:

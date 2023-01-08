@@ -1,4 +1,4 @@
-from constants import *
+from .constants import *
 
 
 class FixedTimeEvent():
@@ -74,7 +74,13 @@ class SlotEvent(FixedTimeEvent):
         proposer = self.epoch_event.proposers[self.counter %
                                               SLOTS_PER_EPOCH]
 
-        for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH - 1]]:
+        # turn off the attesting power of the node if they have exercised the attesting in the previous slot
+        for validator_node in [v for v in self.epoch_event.committees[self.counter-1 % SLOTS_PER_EPOCH] if v.is_attesting == True]:
+            validator_node.is_attesting = False
+
+        # Enable the attesting power of the node if they exist in the slot
+        for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH] if v.is_attesting == False]:
+
             validator_node.is_attesting = True
 
         proposer.propose_block(self.counter, 'E{}_S{}'.format(
@@ -84,7 +90,7 @@ class SlotEvent(FixedTimeEvent):
             proposer, proposer.gasper.consensus_chain, proposer.attestations))
 
         malicious_committee = False
-        for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]]:
+        for validator_node in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]:
             if validator_node.malicious:
                 malicious_committee = True
 
@@ -109,12 +115,11 @@ class AttestationEvent(FixedTimeEvent):
     def event(self):
         print('providing attestation for slot: {}'.format(self.slot_event.counter))
         for validator_node in self.epoch_event.committees[self.slot_event.counter % SLOTS_PER_EPOCH]:
-            if ~validator_node.is_attesting: 
-                continue
-            print('Called node {} for attesting'.format(validator_node))
-            validator_node.attest(self.slot_event.counter)
-            print('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
-                validator_node, validator_node.gasper.consensus_chain, validator_node.attestations))
+            if validator_node.is_attesting:                 
+                print('Called node {} for attesting'.format(validator_node))
+                validator_node.attest(self.slot_event.counter)
+                print('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
+                    validator_node, validator_node.gasper.consensus_chain, validator_node.attestations))
 
     def __repr__(self):
         return 'Chain Attestation {}'.format(self.counter)

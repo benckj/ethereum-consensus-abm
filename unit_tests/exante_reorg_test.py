@@ -9,7 +9,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
     def setUp(self):
         self.no_of_nodes = 10
         self.genesis_block = Block('0', "genesis", 0)
-        self.nodes = [Node(self.genesis_block)
+        self.nodes = [Node(self.genesis_block,i)
                       for i in range(self.no_of_nodes)]
 
     def produce_emptyslot(self):

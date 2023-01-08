@@ -1,12 +1,12 @@
 import networkx as nx
 import numpy as np
 
-from constants import *
-from base_utils import *
-from Gillespie import *
-from fixedEvents import *
-from randomProcess import *
-from node import *
+from .constants import *
+from .base_utils import *
+from .Gillespie import *
+from .fixedEvents import *
+from .randomProcess import *
+from .node import *
 
 
 class Model:
@@ -21,6 +21,7 @@ class Model:
                  tau_block=None,
                  tau_attest=None,
                  malicious_percent=0,
+                 adversary_offset=5,
                  seed=None,
                  ):
 
@@ -39,12 +40,12 @@ class Model:
         no_of_honest_nodes = len(
             self.network) - no_of_malicious_nodes
 
-        block = Block('0', 'genesis', 0)
+        self.genesis_block = Block('0', 'genesis', 0)
 
-        honest_nodes = [Node(block, self.rng)
+        honest_nodes = [Node(self.genesis_block , i, self.rng)
                         for i in range(no_of_honest_nodes)]
 
-        malicious_nodes = [Node(block, self.rng, malicious=True)
+        malicious_nodes = [Node(self.genesis_block , len(no_of_honest_nodes) + i, self.rng, malicious=True)
                            for i in range(no_of_malicious_nodes)]
 
         self.nodes = []
@@ -75,7 +76,7 @@ class Model:
             SECONDS_PER_SLOT, offset=4, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
 
         self.adversary_event = AdversaryEvent(
-            SECONDS_PER_SLOT, offset=5, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
+            SECONDS_PER_SLOT, offset=adversary_offset, slot_event=self.slot_event, epoch_event=self.epoch_event, rng=self.rng)
 
         self.processes = [self.block_gossip_process,
                           self.attestation_gossip_process]
@@ -86,6 +87,7 @@ class Model:
         self.time = 0
 
         # Things for God's Eye View
+        self.god_view_blocks = set()
 
     def run(self, stoping_time):
 
@@ -114,35 +116,19 @@ class Model:
         # attestations from a god pov
         # for each node we have the latest attestations issued by the node
         # god_view_attestations = {node: node.attestations[node] for node in self.validators}
-        god_view_blocks = set()
+        
 
         for node in self.validators:
-            god_view_blocks.update([block for block in node.local_blockchain])
+            self.god_view_blocks.update([block for block in node.local_blockchain])
 
         rng_node = self.rng.choice(self.validators)
 
+        rng_node.gasper.lmd_ghost(rng_node.attestations)
+
         results_dict = {
-            "mainchain_rate": rng_node.gasper.calculate_mainchain_rate(god_view_blocks),
-            "branch_ratio": rng_node.gasper.calculate_branch_ratio(god_view_blocks),
-            "blocktree_entropy": rng_node.gasper.calculate_entropy(god_view_blocks)
+            "mainchain_rate": rng_node.gasper.calculate_mainchain_rate(self.god_view_blocks),
+            "branch_ratio": rng_node.gasper.calculate_branch_ratio(self.god_view_blocks),
+            "blocktree_entropy": rng_node.gasper.calculate_entropy(self.god_view_blocks)
         }
         return results_dict
 
-
-if __name__ == "__main__":
-    # As mentioned in the Stochatic Modelling paper,
-    # the number of neighbors fixed but have to experiment multiple topologies
-    net_p2p = nx.barabasi_albert_graph(
-        96,5)
-    lcc_set = max(nx.connected_components(net_p2p), key=len)
-    net_p2p = net_p2p.subgraph(lcc_set).copy()
-    net_p2p = nx.convert_node_labels_to_integers(
-        net_p2p, first_label=0)
-    model = Model(
-        graph=net_p2p,
-        tau_block=1,
-        tau_attest=1,
-        malicious_percent=0.15
-    )
-    model.run(2e2)
-    print(model.results())

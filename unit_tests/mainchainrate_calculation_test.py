@@ -18,7 +18,7 @@ class MainChainRate_TestCases(unittest.TestCase):
         mock_blockchain = set()
 
         genesis = Block('0', "genesis", 0)
-        mock_node = Node(genesis)
+        mock_node = Node(genesis,0)
 
         mock_blockchain.update([genesis])
 

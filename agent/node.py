@@ -1,5 +1,5 @@
-from base_utils import *
-from gasper_consensus import *
+from .base_utils import *
+from .gasper_consensus import *
 import numpy as np
 
 
@@ -9,15 +9,8 @@ class Node:
     INPUT:
     - blockchain,   list of Block objects,
     '''
-    counter = 0
-
-    @classmethod
-    def __update(cls):
-        cls.counter += 1
-
-    def __init__(self, block, rng=np.random.default_rng(100), malicious=False):
-        self.id = self.counter
-        self.__update()
+    def __init__(self, block, id, rng=np.random.default_rng(100), malicious=False):
+        self.id = id
 
         self.rng = rng
         self.gasper = Gasper(block)
