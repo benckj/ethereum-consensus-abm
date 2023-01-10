@@ -8,9 +8,11 @@ FUNCTIONS
 LMD Ghost following functions handle LMD Ghost Evaluation of Blocks
 '''
 
+
 class Gasper:
     finalized_head_slot = 0
     consensus_chain = {}
+    headblock_weights = {}
 
     def __init__(self, genesis_block):
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
@@ -23,7 +25,7 @@ class Gasper:
         return {slot: node_attestations for slot,
                 node_attestations in attestations.items() if slot <= needed_slot - MIN_ATTESTATION_DELAY}
 
-    def get_cummulative_weight_subTree(self, slot, blockTree, fork_choice_attestations):
+    def get_blocktree_weight(self, slot, blockTree, fork_choice_attestations):
         total_weights = 0
 
         if len(blockTree) == 0 or slot not in fork_choice_attestations.keys():
@@ -40,10 +42,10 @@ class Gasper:
             if len(block.children) == 0 and block in slot_block_weights.keys():
                 total_weights += slot_block_weights[block]
             elif block in slot_block_weights.keys():
-                total_weights += slot_block_weights[block] + self.get_cummulative_weight_subTree(
+                total_weights += slot_block_weights[block] + self.get_blocktree_weight(
                     slot+1, block.children, fork_choice_attestations)
             else:
-                total_weights += self.get_cummulative_weight_subTree(
+                total_weights += self.get_blocktree_weight(
                     slot+1, [block], fork_choice_attestations)
 
         return total_weights
@@ -63,8 +65,8 @@ class Gasper:
             return None
 
         # fetch the block's subtree weight
-        block_w_weights = {block: self.get_cummulative_weight_subTree(
-            slot+1, [block for block in block.children if block.slot == slot+1], fork_choice_attestations) for block in inverse_node_attestations.keys()}
+        block_w_weights = {block: self.get_blocktree_weight(
+            slot+1, [block,*block.children], fork_choice_attestations) for block in inverse_node_attestations.keys()}
 
         total_block_weights = {block: block_w_weights[block] + len(
             nodes) for block, nodes in inverse_node_attestations.items()}
@@ -106,7 +108,7 @@ class Gasper:
     def get_head_block(self):
         for slot, block in sorted(self.consensus_chain.items(), reverse=True):
             if block:
-                return (slot,block) 
+                return (slot, block)
 
     def get_block2attest(self, block, attestations):
         self.lmd_ghost(attestations)
@@ -119,9 +121,13 @@ class Gasper:
         if current_head_slot >= block.slot:
             return current_head_block
 
-        # If the block is proposed in the later slots and listened by this node, then this is great and this has to be attested.
-        # [Techincally] If block.slot > current_head_slot:
-        return block
+        # If the block produced is under the head of the canonical chain then return the block
+        if block.parent == current_head_block:
+            return block
+
+        # If the block is proposed in the later slots and does not have the latest computed 
+        return current_head_block
+
 
     def calculate_mainchain_rate(self, all_known_blocks):
         """Compute the ratio of blocks in the mainchain over the total
@@ -134,11 +140,11 @@ class Gasper:
         xi : float
             Mainchain blocks ratio
         """
-        return len([block for slot, block in self.consensus_chain.items() if block])/ len(all_known_blocks)
+        return len([block for slot, block in self.consensus_chain.items() if block]) / len(all_known_blocks)
 
     def calculate_branch_ratio(self, all_known_blocks):
         """Compute the branch Ratio, which measures how often forks happen
-        
+
         Parameters:
         -----------
         blockchain : A list of Block objects
@@ -148,7 +154,8 @@ class Gasper:
             The branching ratio
         """
 
-        main_chain = set([block for slot, block in self.consensus_chain.items() if block])
+        main_chain = set(
+            [block for slot, block in self.consensus_chain.items() if block])
         orphan_chain = all_known_blocks - main_chain
 
         counter = 0
