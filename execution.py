@@ -115,8 +115,8 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=1.1,
-        tau_attest=1.2,
+        tau_block=5,
+        tau_attest=5,
         malicious_percent=0
     )
     model.run(100)

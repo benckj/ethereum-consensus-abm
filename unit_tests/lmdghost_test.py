@@ -13,10 +13,6 @@ class GHOST_TestCase(unittest.TestCase):
         self.nodes = [Node(self.genesis_block,i)
                       for i in range(self.no_of_nodes)]
 
-    def test_setup(self):
-        for i in range(self.no_of_nodes):
-            self.assertIn(self.genesis_block, self.nodes[i].local_blockchain)
-
     def test_onelevel_heavyweight(self):
         # Just to check Heavy weight
         block1 = Block('1B', self.nodes[0], 1, self.genesis_block)

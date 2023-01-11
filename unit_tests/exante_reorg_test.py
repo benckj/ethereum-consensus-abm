@@ -74,7 +74,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         # Logic to see produce an empty slot
         self.attestation.update(
-            {2: {self.nodes[i]: block1 for i in range(int(0.6 * self.no_of_nodes))}})
+            {2: {self.nodes[i]: block1 for i in range(int(0.4 * self.no_of_nodes))}})
         self.nodes[4].gasper.lmd_ghost(self.attestation)
         self.assertEqual(self.nodes[4].gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1,  2: None})

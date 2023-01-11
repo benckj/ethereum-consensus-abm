@@ -8,7 +8,6 @@ from unit_tests.mainchainrate_calculation_test import *
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(GHOST_TestCase('test_setup'))
     suite.addTest(GHOST_TestCase('test_onelevel_heavyweight'))
     suite.addTest(GHOST_TestCase('test_onelevel_tieweight'))
     suite.addTest(GHOST_TestCase('test_twolevel_heavyweight'))

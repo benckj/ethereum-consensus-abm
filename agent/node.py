@@ -9,6 +9,7 @@ class Node:
     INPUT:
     - blockchain,   list of Block objects,
     '''
+
     def __init__(self, block, id, rng=np.random.default_rng(100), malicious=False):
         self.id = id
 
@@ -16,6 +17,7 @@ class Node:
         self.gasper = Gasper(block)
         self.attestations = {}  # {slot: {node:block}}
         self.cached_attestations = set()  # {tuple(slot,node,block)}
+        self.cached_blocks = set()
 
         self.local_blockchain = [block]
         self.global_blockchain = {0: block}
@@ -32,8 +34,15 @@ class Node:
         self.obstruct_gossiping = False
 
     def update_local_blockchain(self, block):
-        self.local_blockchain.append(block)
-        self.check_cached_attestations()
+        # as read in the gossiping rules, A Node should not accept a block where it does not
+        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_block
+        if (block.parent not in self.local_blockchain):
+            self.cached_blocks.add(block)
+            return
+        if block not in self.local_blockchain:
+            self.local_blockchain.append(block)
+            self.check_cached_attestations()
+            self.check_cached_blocks()
 
     def use_lmd_ghost(self, slot):
         self.gasper.lmd_ghost(
@@ -55,8 +64,8 @@ class Node:
         # add block to local blockchain
         self.update_local_blockchain(new_block)
 
-        # [TODO] How to add the 40% Attestation Proposer booster weight to consensus chain when node is proposing 
-        # also check this with 
+        # [TODO] How to add the 40% Attestation Proposer booster weight to consensus chain when node is proposing
+        # also check this with
 
         # add new_block to gossiping data
         self.gossip_data[slot] = {"block": new_block}
@@ -69,20 +78,31 @@ class Node:
     def listen_block(self, gossiping_node, slot):
         """Receive new block and update local information accordingly.
         """
-        if (slot not in gossiping_node.gossip_data.keys()) or ("block" not in gossiping_node.gossip_data[slot].keys()):
-            return
+        for listening_slot in gossiping_node.gossip_data.keys():
+            if slot > listening_slot > self.gasper.finalized_head_slot or ("block" not in gossiping_node.gossip_data[listening_slot].keys()):
+                continue
 
-        listened_block = gossiping_node.gossip_data[slot]["block"]
+            listening_block = gossiping_node.gossip_data[listening_slot]["block"]
 
-        if listened_block not in self.local_blockchain:
-            # Add to local of the node
-            self.update_local_blockchain(listened_block)
+            # As node can listen only one proposed block in a particular slot
+            if listening_slot in self.gossip_data.keys() and "block" in self.gossip_data[listening_slot].keys():
+                if self.gossip_data[listening_slot]["block"] != listening_block or self.gossip_data[listening_slot]["block"] != None:
+                    continue
 
-            # Gossip the listened block,
-            self.gossip_data[slot] = {"block": listened_block}
+            if listening_block not in self.local_blockchain:
+                # Add to local of the node
+                self.update_local_blockchain(listening_block)
+
+                # Gossip the listened block if the slot does not exist on the gossip data
+                if listening_slot not in self.gossip_data.keys():
+                    self.gossip_data[listening_slot] = {"block": listening_block}
+
+                # Gossip the listened block if the gossip data does have slot but not the block key.
+                if "block" not in self.gossip_data[listening_slot].keys():
+                    self.gossip_data[listening_slot].update({"block": listening_block})
 
         # Attest if the node is in committee
-        if self.is_attesting == True:
+        if self.is_attesting == True and slot in self.gossip_data.keys() and "block" in self.gossip_data[slot]:
             if slot in self.attestations.keys() and self in self.attestations[slot].keys():
                 return
             self.attest(slot)
@@ -106,8 +126,11 @@ class Node:
             self.attestations[attestation.slot] = {}
         self.attestations[attestation.slot][self] = attestation.block
 
-        if attestation.slot not in self.gossip_data.keys() or "attestations" not in self.gossip_data[attestation.slot].keys():
+        if attestation.slot not in self.gossip_data.keys():
             self.gossip_data[attestation.slot] = {"attestations": set()}
+
+        if "attestations" not in self.gossip_data[attestation.slot].keys():
+            self.gossip_data[attestation.slot].update({"attestations": set()})
 
         # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(
@@ -122,29 +145,46 @@ class Node:
         listening_node.listen_attestation(self, slot)
 
     def listen_attestation(self, gossiping_node, slot):
-        # if head block is the parent of the new block then vote for it or else check attestations of that block as the node knows.
-        if slot not in gossiping_node.gossip_data.keys() or "attestations" not in gossiping_node.gossip_data[slot].keys():
-            return
+        # as read in the gossiping attestation rules, A Node should not accept an attestation until ATTESTATION_PROPAGATION_SLOT_RANGE of slots
+        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#attestation-subnets
+        for listening_slot in gossiping_node.gossip_data.keys():
+            if listening_slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= slot >= listening_slot and slot // SLOTS_PER_EPOCH == listening_slot // SLOTS_PER_EPOCH:
 
-        listened_attestations = gossiping_node.gossip_data[
-            slot]["attestations"]
+                if "attestations" not in gossiping_node.gossip_data[listening_slot].keys():
+                    continue
 
-        for l_slot, l_node, l_block in listened_attestations:
-            if l_slot not in self.attestations.keys():
-                self.attestations[l_slot] = {}
-            if l_block in self.local_blockchain:
-                self.attestations[l_slot][l_node] = l_block
-                continue
+                listened_attestations = gossiping_node.gossip_data[
+                    listening_slot]["attestations"]
 
-            # As the block is not yet known by the node
-            self.cached_attestations.add(tuple([l_slot, l_node, l_block]))
+                for l_slot, l_node, l_block in listened_attestations:
 
-        # Copy the attestation to gossip
-        if slot not in self.gossip_data.keys() or "attestations" not in self.gossip_data[slot].keys():
-            self.gossip_data[slot] = {"attestations": set()}
+                    if l_slot not in self.attestations.keys():
+                        self.attestations[l_slot] = {}
 
-        self.gossip_data[slot]["attestations"].update(
-            listened_attestations)  # init to send it out
+                    if l_block not in self.local_blockchain:
+                        # Below execute if the block does not exist in the  the block is not yet known by the node
+                        self.cached_attestations.add(
+                            tuple([l_slot, l_node, l_block]))
+                        continue
+
+                    self.attestations[l_slot][l_node] = l_block
+
+         
+                if slot not in self.gossip_data.keys():
+                    self.gossip_data[slot] = {"attestations": set()}
+                if "attestations" not in self.gossip_data[slot].keys():
+                    self.gossip_data[slot].update({"attestations": set()})
+
+                # Copy the attestation to gossip
+                self.gossip_data[slot]["attestations"].update(
+                    listened_attestations)  # init to send it out
+
+    def check_cached_blocks(self):
+        for block in self.cached_blocks.copy():
+            if block.parent in self.local_blockchain:
+                self.cached_blocks.remove(
+                    block)
+                self.local_blockchain.append(block)
 
     def check_cached_attestations(self):
         for slot, node, block in self.cached_attestations.copy():
