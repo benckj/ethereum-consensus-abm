@@ -43,8 +43,7 @@ class BlockGossipProcess(Process):
 
     def event(self,slot):
         gossiping_node, listening_node = self.rng.choice(self.edges)
-        gossiping_node.gossip_block(listening_node,slot)
-        return
+        return gossiping_node.gossip_block(listening_node,slot)
 
 
 class AttestationGossipProcess(Process):

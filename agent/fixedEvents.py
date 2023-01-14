@@ -21,11 +21,10 @@ class FixedTimeEvent():
         while next_time > self.next_event:
             print(next_time)
             self.counter += 1
-            self.event()
+            response = self.event()
             self.next_event += self.interval
-
-            return True
-        return False
+            return response
+        return 
 
     def event(self):
         pass
@@ -58,6 +57,8 @@ class EpochEvent(FixedTimeEvent):
         print(self.committees, self.proposers)
         print('New Epoch: Committees formed')
 
+        return
+
     def __repr__(self):
         return 'Chain Epoch {}'.format(self.counter)
 
@@ -74,16 +75,15 @@ class SlotEvent(FixedTimeEvent):
         proposer = self.epoch_event.proposers[self.counter %
                                               SLOTS_PER_EPOCH]
 
-        # turn off the attesting power of the node if they have exercised the attesting in the previous slot
-        for validator_node in [v for v in self.epoch_event.committees[self.counter-1 % SLOTS_PER_EPOCH] if v.is_attesting == True]:
-            validator_node.is_attesting = False
+        # # turn off the attesting power of the node if they have exercised the attesting in the previous slot
+        # for validator_node in [v for v in self.epoch_event.committees[self.counter-1 % SLOTS_PER_EPOCH] if v.is_attesting == True]:
+        #     validator_node.is_attesting = False
 
         # Enable the attesting power of the node if they exist in the slot
         for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH] if v.is_attesting == False]:
-
             validator_node.is_attesting = True
 
-        proposer.propose_block(self.counter, 'E{}_S{}'.format(
+        block = proposer.propose_block(self.counter, 'E{}_S{}'.format(
             self.epoch_event.counter, self.counter))
 
         print('Proposer Node {}: Consensus View {} Consensus Attestations: {}'.format(
@@ -102,6 +102,7 @@ class SlotEvent(FixedTimeEvent):
                 validator_node.obstruct_gossiping = True
             proposer.obstruct_gossiping = True
 
+        return block
     def __repr__(self):
         return 'Chain Slot {}'.format(self.counter)
 
@@ -113,14 +114,15 @@ class AttestationEvent(FixedTimeEvent):
         self.epoch_event = epoch_event
 
     def event(self):
+        attestations = []
         print('providing attestation for slot: {}'.format(self.slot_event.counter))
         for validator_node in self.epoch_event.committees[self.slot_event.counter % SLOTS_PER_EPOCH]:
             if validator_node.is_attesting:                 
                 print('Called node {} for attesting'.format(validator_node))
-                validator_node.attest(self.slot_event.counter)
+                attestations.append(validator_node.attest(self.slot_event.counter))
                 print('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
                     validator_node, validator_node.gasper.consensus_chain, validator_node.attestations))
-
+        return attestations
     def __repr__(self):
         return 'Chain Attestation {}'.format(self.counter)
 

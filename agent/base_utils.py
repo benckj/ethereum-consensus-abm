@@ -92,8 +92,9 @@ class Attestation():
     """It wraps a block to a node. In the context of attestation, 
     the block is the attested block and the node is the attestor.
     INPUTS:
-    - attestor,  Node object
-    - block,     Block object
+    - attestor,  Node object, (Member of the committee attestating)
+    - block,     Block object, (The Block voted)
+    - slot,      number, ()
     """
 
     def __init__(self, attestor, block, slot):

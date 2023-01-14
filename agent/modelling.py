@@ -97,7 +97,15 @@ class Model:
 
             # loop over fixed events and trigger if time passes fixed event time
             for fixed in self.fixed_events:
-                fixed.trigger(self.time + increment)
+                response = fixed.trigger(self.time + increment)
+
+                # if response == None:
+                #     continue
+                # if isinstance(response, Block):
+                #     continue
+                # if isinstance(response, list):
+                #     continue
+
 
             # select poisson process and trigger selected process
             next_process = self.gillespie.select_event()

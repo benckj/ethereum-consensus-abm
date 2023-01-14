@@ -68,21 +68,24 @@ def draw_blockchain(all_known_blocks, attestations, head_block, genesis_block, n
         if labels[k] == 0:
             labels[k] = '0'
 
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=150)
+    fig, ax = plt.subplots(figsize=(15, 15), dpi=300)
 
     T = to_digraph(all_known_blocks)
 
     pos = graphviz_layout(T, prog="dot")
 
+    # pos = {k: (v[0], (1 + [b.slot for b in all_known_blocks if b.value == k][0])*40.0) for k,v in pos.items()}
+
+
     nx.draw_networkx_nodes(T, nodelist=[head_block[1].value],
                            pos=pos, node_shape='s', node_size=500,
                            node_color='cornflowerblue', alpha=0.5, ax=ax)
 
-    nx.draw_networkx_nodes(T, pos=pos, node_shape='s',
-                           node_size=[150+(1000/total_attestations)
-                                      * block_weights[n] for n in pos.keys()],
-                           node_color='fuchsia', edgecolors='fuchsia', alpha=0.3,
-                           ax=ax)
+    # nx.draw_networkx_nodes(T, pos=pos, node_shape='s',
+    #                        node_size=[150+(1000/total_attestations)
+    #                                   * block_weights[n] for n in pos.keys()],
+    #                        node_color='grey', edgecolors='black', alpha=0.1,
+    #                        ax=ax)
 
     nx.draw_networkx_nodes(T, node_shape='s', edgecolors='k',
                            node_color=weight_list,
@@ -100,7 +103,7 @@ if __name__ == "__main__":
     # As mentioned in the Stochatic Modelling paper,
     # the number of neighbors fixed but have to experiment multiple topologies
     net_p2p = nx.barabasi_albert_graph(
-        64, 3)
+        32, 2)
     lcc_set = max(nx.connected_components(net_p2p), key=len)
     net_p2p = net_p2p.subgraph(lcc_set).copy()
     net_p2p = nx.convert_node_labels_to_integers(
@@ -115,11 +118,11 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=5,
-        tau_attest=5,
+        tau_block=0.5,
+        tau_attest=0.5,
         malicious_percent=0
     )
-    model.run(100)
+    model.run(120)
 
     rng_node = np.random.default_rng().choice(model.validators)
     rng_node.gasper.lmd_ghost(rng_node.attestations)

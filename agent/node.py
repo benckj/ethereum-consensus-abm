@@ -70,10 +70,12 @@ class Node:
         # add new_block to gossiping data
         self.gossip_data[slot] = {"block": new_block}
 
+        return new_block
+
     def gossip_block(self, listening_node, slot):
         if self.obstruct_gossiping == True and listening_node not in self.malicious_neighbors:
             return
-        listening_node.listen_block(self, slot)
+        return listening_node.listen_block(self, slot)
 
     def listen_block(self, gossiping_node, slot):
         """Receive new block and update local information accordingly.
@@ -105,7 +107,7 @@ class Node:
         if self.is_attesting == True and slot in self.gossip_data.keys() and "block" in self.gossip_data[slot]:
             if slot in self.attestations.keys() and self in self.attestations[slot].keys():
                 return
-            self.attest(slot)
+            return self.attest(slot)
 
     # Should take a new incoming block into consideration
     def attest(self, slot):
@@ -138,6 +140,7 @@ class Node:
 
         # As a node must attest only once in a slot
         self.is_attesting = False
+        return attestation
 
     def gossip_attestation(self, listening_node, slot):
         if self.obstruct_gossiping == True and listening_node not in self.malicious_neighbors:
