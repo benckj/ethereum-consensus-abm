@@ -17,117 +17,103 @@ class Gasper:
     def __init__(self, genesis_block):
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
 
-    def getLatestAttestationsBySlot(self, unneeded_slots, attestations):
-        return {slot: node_attestations for slot,
-                node_attestations in attestations.items() if slot > unneeded_slots}
+    def get_latest_attestations(self, attestations):
+        chunked_attestation = {slot: node_attestations for slot,
+                               node_attestations in attestations.items() if slot > self.finalized_head_slot}
+        inv_latest_attestaion = {}
+        latest_attestation = {}
+
+        for slot, node_attestation in chunked_attestation.items():
+            for node, block in node_attestation.items():
+                inv_latest_attestaion.update({node: (slot, block)})
+
+        for node, slot_attestations in inv_latest_attestaion.items():
+            if slot_attestations[0] not in latest_attestation.keys():
+                latest_attestation.update({slot_attestations[0]: {
+                    node: slot_attestations[1]}})
+            else:
+                latest_attestation[slot_attestations[0]].update( 
+                    {node: slot_attestations[1]})
+
+        return latest_attestation
 
     def prune_attestatations_byInclusionDelay(self, needed_slot, attestations):
         return {slot: node_attestations for slot,
                 node_attestations in attestations.items() if slot <= needed_slot - MIN_ATTESTATION_DELAY}
 
-    def get_blocktree_weight(self, slot, blockTree, fork_choice_attestations):
+    def get_cummulative_weight_subTree(self, given_block, attestations):
         total_weights = 0
 
-        if len(blockTree) == 0 or slot not in fork_choice_attestations.keys():
-            return 0
+        for slot in attestations.keys():
+            for block in attestations[slot].values():
+                if given_block == block:
+                    total_weights += 1
 
-        slot_block_weights = {}
-        for block in fork_choice_attestations[slot].values():
-            if block in slot_block_weights.keys():
-                slot_block_weights[block] += 1
-            else:
-                slot_block_weights[block] = 1
-
-        for block in blockTree:
-            if len(block.children) == 0 and block in slot_block_weights.keys():
-                total_weights += slot_block_weights[block]
-            elif block in slot_block_weights.keys():
-                total_weights += slot_block_weights[block] + self.get_blocktree_weight(
-                    slot+1, block.children, fork_choice_attestations)
-            else:
-                total_weights += self.get_blocktree_weight(
-                    slot+1, [block], fork_choice_attestations)
+        if len(given_block.children) != 0:
+            for block in given_block.children:
+                total_weights += self.get_cummulative_weight_subTree(block, attestations)
 
         return total_weights
 
-    def get_heaviest_block(self, slot, node_attestations, fork_choice_attestations, parent_block):
-        inverse_node_attestations = {}
-
-        if len(parent_block.children) == 0:
-            return None
-
-        for node, block in node_attestations.items():
-            if block in parent_block.children:
-                inverse_node_attestations[block] = inverse_node_attestations.get(
-                    block, []) + [node]
-
-        if len(inverse_node_attestations.keys()) == 0:
-            return None
-
+    def get_heaviest_block(self, slot, attestations, local_blockchain):
         # fetch the block's subtree weight
-        block_w_weights = {block: self.get_blocktree_weight(
-            slot+1, [block,*block.children], fork_choice_attestations) for block in inverse_node_attestations.keys()}
+        block_weights = {block: self.get_cummulative_weight_subTree(
+            block, attestations) for block in local_blockchain if block.slot == slot}
 
-        total_block_weights = {block: block_w_weights[block] + len(
-            nodes) for block, nodes in inverse_node_attestations.items()}
 
-        block_with_max_votes = [block for block, weight in total_block_weights.items(
-        ) if weight == max(total_block_weights.values())]
+        block_with_max_votes = [block for block, weight in block_weights.items(
+        ) if weight == max(block_weights.values())]
 
-        if len(block_with_max_votes) == 1:
-            return block_with_max_votes[0]
+        if len(block_with_max_votes) == 0:
+            return None
 
-        return [block for block, weights in block_w_weights.items() if weights == max(block_w_weights.values())][0]
+        ## As seen in the ethereum about ties handling using the max funcrtion which selects the first options if it is equal
+        # https://github.com/ethereum/annotated-spec/blob/master/phase0/fork-choice.md#get_latest_attesting_balance
+        return block_with_max_votes[0]
 
-    def last_consensus_block(self, slot):
-        if slot in self.consensus_chain.keys() and self.consensus_chain[slot]:
-            return self.consensus_chain[slot]
-        else:
-            return self.last_consensus_block(slot-1)
+    def lmd_ghost(self, local_blockchain, attestations):
+        # get the latest attestations out of all know attestations
+        fork_choice_attestations = self.get_latest_attestations(attestations)
 
-    def lmd_ghost(self, attestations):
-        # prune the finalized slot votes of all the node
-        fork_choice_attestations = self.getLatestAttestationsBySlot(
-            self.finalized_head_slot, attestations)
+        if len(fork_choice_attestations.keys())==0:
+            return
 
-        justified_slot = None
-        for slot, node_attestations in fork_choice_attestations.items():
-            last_block = self.last_consensus_block(
-                justified_slot if justified_slot else self.finalized_head_slot)
+        # justified_slot = None
+        for slot in range(1, max(fork_choice_attestations.keys()) + 1):
             heavyBlock = self.get_heaviest_block(
-                slot, node_attestations, fork_choice_attestations, last_block)
-            justified_slot = slot
+                slot, fork_choice_attestations, local_blockchain)
+            # justified_slot = slot
 
             self.consensus_chain[slot] = heavyBlock
 
-            # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
-            if justified_slot % FFG_FINALIZE_SLOTS == 0:
-                self.finalized_head_slot = max(
-                    justified_slot-2, self.finalized_head_slot)
+            # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
+            # if justified_slot % FFG_FINALIZE_SLOTS == 0:
+            #     self.finalized_head_slot = max(
+            #         justified_slot, self.finalized_head_slot)
 
     def get_head_block(self):
-        for slot, block in sorted(self.consensus_chain.items(), reverse=True):
+        for slot, block in sorted(self.consensus_chain.items(), key=lambda item: item[0],  reverse=True):
             if block:
                 return (slot, block)
 
-    def get_block2attest(self, block, attestations):
-        self.lmd_ghost(attestations)
+    def get_block2attest(self, local_blockchain, attestations):
+        self.lmd_ghost(local_blockchain, attestations)
         current_head_slot, current_head_block = self.get_head_block()
+        latest_block = local_blockchain.pop()
 
         # Compare the block slot vs the head_slot
         # If the head_slot is greater and this block is propose in the already consensus achieved slots.
         # This block does not have enough attestations to reach consensus or this block was listened late in that particular slot.
         # So, we return the previous head as the current head block again.
-        if current_head_slot >= block.slot:
+        if current_head_slot >= latest_block.slot:
             return current_head_block
 
         # If the block produced is under the head of the canonical chain then return the block
-        if block.parent == current_head_block:
-            return block
+        if latest_block.parent == current_head_block:
+            return latest_block
 
-        # If the block is proposed in the later slots and does not have the latest computed 
+        # If the block is proposed in the later slots and does not have the latest computed
         return current_head_block
-
 
     def calculate_mainchain_rate(self, all_known_blocks):
         """Compute the ratio of blocks in the mainchain over the total

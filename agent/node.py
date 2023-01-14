@@ -45,8 +45,8 @@ class Node:
             self.check_cached_blocks()
 
     def use_lmd_ghost(self, slot):
-        self.gasper.lmd_ghost(
-            self.gasper.prune_attestatations_byInclusionDelay(slot, self.attestations))
+        self.gasper.lmd_ghost(self.local_blockchain.copy(),
+                              self.gasper.prune_attestatations_byInclusionDelay(slot, self.attestations))
         self.global_blockchain = self.gasper.consensus_chain
         return self.gasper.get_head_block()
 
@@ -97,11 +97,13 @@ class Node:
 
                 # Gossip the listened block if the slot does not exist on the gossip data
                 if listening_slot not in self.gossip_data.keys():
-                    self.gossip_data[listening_slot] = {"block": listening_block}
+                    self.gossip_data[listening_slot] = {
+                        "block": listening_block}
 
                 # Gossip the listened block if the gossip data does have slot but not the block key.
                 if "block" not in self.gossip_data[listening_slot].keys():
-                    self.gossip_data[listening_slot].update({"block": listening_block})
+                    self.gossip_data[listening_slot].update(
+                        {"block": listening_block})
 
         # Attest if the node is in committee
         if self.is_attesting == True and slot in self.gossip_data.keys() and "block" in self.gossip_data[slot]:
@@ -115,7 +117,7 @@ class Node:
         """
         # Fetch the Block2Attest, taking the listened blocks, LISTs in python behave LIFO
         attesting_slot, attesting_block = slot, self.gasper.get_block2attest(
-            self.local_blockchain.copy().pop(), self.attestations)
+            self.local_blockchain.copy(), self.attestations)
 
         # Create the attestation for this slot
         attestation = Attestation(self, attesting_block, attesting_slot)
@@ -172,7 +174,6 @@ class Node:
 
                     self.attestations[l_slot][l_node] = l_block
 
-         
                 if slot not in self.gossip_data.keys():
                     self.gossip_data[slot] = {"attestations": set()}
                 if "attestations" not in self.gossip_data[slot].keys():

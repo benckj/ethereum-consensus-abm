@@ -99,14 +99,6 @@ class Model:
             for fixed in self.fixed_events:
                 response = fixed.trigger(self.time + increment)
 
-                # if response == None:
-                #     continue
-                # if isinstance(response, Block):
-                #     continue
-                # if isinstance(response, list):
-                #     continue
-
-
             # select poisson process and trigger selected process
             next_process = self.gillespie.select_event()
             next_process.event(self.slot_event.counter)
@@ -131,7 +123,7 @@ class Model:
 
         rng_node = self.rng.choice(self.validators)
 
-        rng_node.gasper.lmd_ghost(rng_node.attestations)
+        rng_node.gasper.lmd_ghost(rng_node.local_blockchain,rng_node.attestations)
 
         results_dict = {
             "mainchain_rate": rng_node.gasper.calculate_mainchain_rate(self.god_view_blocks),
