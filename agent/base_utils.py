@@ -15,15 +15,11 @@ class Network:
     def __len__(self):
         return len(self.graph)
 
-    def set_neighborhood(self, honest_nodes, malicious_nodes):
+    def set_neighborhood(self, nodes):
         # dictionary mapping nodes in the nx.graph to their peers on p2p graph
 
         # Shuffle the nodes to
-        peers_dict = dict(
-            zip(self.graph.nodes(), [*honest_nodes, *malicious_nodes]))
-
-        malicious_peer_dict = {v: k for k,
-                               v in peers_dict.items() if v in malicious_nodes}
+        peers_dict = dict(zip(self.graph.nodes(), nodes))
 
         # save peer node object as an attribute of nx node
         nx.set_node_attributes(
@@ -34,15 +30,6 @@ class Network:
             # save each neighbour in the nx.Graph inside the peer node object
             for k in self.graph.neighbors(n):
                 node_object.neighbors.add(self.graph.nodes[k]["node_mapping"])
-
-        # save each malcious neighbour inside the peer node object and add an edge in the graph
-        for node_object in malicious_nodes:
-            for node_object2 in malicious_nodes:
-                if node_object == node_object2:
-                    continue
-                node_object.malicious_neighbors.add(node_object2)
-                self.graph.add_edges_from(
-                    [(malicious_peer_dict[node_object], malicious_peer_dict[node_object2])])
 
 
 class Block:
@@ -56,7 +43,7 @@ class Block:
     parent           - Block object (parent of the block)
     transactions     - Number (integer) of transactions in the block
     '''
- 
+
     def __init__(self, value, emitter, slot, parent=None):
         self.children = set()
         self.parent = parent

@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import logging
 
 from .constants import *
 from .base_utils import *
@@ -23,6 +24,7 @@ class Model:
                  malicious_percent=0,
                  adversary_offset=5,
                  seed=None,
+                 logging=logging
                  ):
 
         self.tau_block = tau_block
@@ -31,6 +33,9 @@ class Model:
         # Create network based on the given topology while initialization
         self.network = Network(graph)
 
+        # Logging
+        self.logging = logging
+        self.logging.basicConfig(level=logging.ERROR)
         # Using a defined randomness for replication
         self.rng = np.random.default_rng(seed)
 
@@ -40,12 +45,13 @@ class Model:
         no_of_honest_nodes = len(
             self.network) - no_of_malicious_nodes
 
-        self.genesis_block = Block('0', 'genesis', 0)
+        genesis_block = Block('0', 'genesis', 0)
+        self.malicious_shared_state = NodeState(genesis_block)
 
-        honest_nodes = [Node(self.genesis_block , i, self.rng)
+        honest_nodes = [Node(genesis_block , i, self.rng)
                         for i in range(no_of_honest_nodes)]
 
-        malicious_nodes = [Node(self.genesis_block , len(no_of_honest_nodes) + i, self.rng, malicious=True)
+        malicious_nodes = [Node(genesis_block , no_of_honest_nodes + i, self.rng, malicious=True, shared_state=self.malicious_shared_state, logging=self.logging)
                            for i in range(no_of_malicious_nodes)]
 
         self.nodes = []
@@ -54,12 +60,9 @@ class Model:
         self.validators = self.nodes
 
         # form normal network
-        self.network.set_neighborhood(honest_nodes, malicious_nodes)
+        self.network.set_neighborhood(self.nodes)
 
         self.edges = [(n, k) for n in self.nodes for k in n.neighbors]
-
-        self.malicious_edges = [(n, k)
-                                for n in self.nodes for k in n.malicious_neighbors]
 
         self.block_gossip_process = BlockGossipProcess(
             tau=self.tau_block, edges=self.edges)
@@ -119,11 +122,11 @@ class Model:
         
 
         for node in self.validators:
-            self.god_view_blocks.update([block for block in node.local_blockchain])
+            self.god_view_blocks.update([block for block in node.state.local_blockchain])
 
         rng_node = self.rng.choice(self.validators)
 
-        rng_node.gasper.lmd_ghost(rng_node.local_blockchain,rng_node.attestations)
+        rng_node.gasper.lmd_ghost(rng_node.state.local_blockchain,rng_node.state.attestations)
 
         results_dict = {
             "mainchain_rate": rng_node.gasper.calculate_mainchain_rate(self.god_view_blocks),

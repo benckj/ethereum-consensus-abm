@@ -1,4 +1,5 @@
 from .constants import *
+import logging
 
 
 class FixedTimeEvent():
@@ -19,7 +20,7 @@ class FixedTimeEvent():
 
     def trigger(self, next_time):
         while next_time > self.next_event:
-            print(next_time)
+            self.logging.debug(next_time)
             self.counter += 1
             response = self.event()
             self.next_event += self.interval
@@ -31,12 +32,12 @@ class FixedTimeEvent():
 
 
 class EpochEvent(FixedTimeEvent):
-    def __init__(self, interval, validators, rng=None):
+    def __init__(self, interval, validators, rng=None, logging=logging):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.committees = []
         self.proposers = []
-
+        self.logging = logging.getLogger('Epoch {}'.format(self.counter))
         self.v_n = len(self.validators)
         self.committee_size = int(self.v_n/SLOTS_PER_EPOCH)
         self.leftover = self.v_n - (self.committee_size * SLOTS_PER_EPOCH)
@@ -54,8 +55,8 @@ class EpochEvent(FixedTimeEvent):
         for i in range(1, self.leftover+1):
             self.committees[j[i-1]].append(self.validators[-i])
 
-        print(self.committees, self.proposers)
-        print('New Epoch: Committees formed')
+        self.logging.debug(self.committees, self.proposers)
+        self.logging.debug('New Epoch: Committees formed')
 
         return
 
@@ -64,14 +65,15 @@ class EpochEvent(FixedTimeEvent):
 
 
 class SlotEvent(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_event, rng=None):
+    def __init__(self, interval, validators, epoch_event, rng=None, logging=logging):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.epoch_event = epoch_event
         self.malicious_slot = False
+        self.logging = logging.getLogger('Slot {}'.format(self.counter))
 
     def event(self):
-        print('proposing block for slot: {}'.format(self.counter))
+        self.logging.debug('proposing block for slot: {}'.format(self.counter))
         proposer = self.epoch_event.proposers[self.counter %
                                               SLOTS_PER_EPOCH]
 
@@ -86,8 +88,8 @@ class SlotEvent(FixedTimeEvent):
         block = proposer.propose_block(self.counter, 'E{}_S{}'.format(
             self.epoch_event.counter, self.counter))
 
-        print('Proposer Node {}: Consensus View {} Consensus Attestations: {}'.format(
-            proposer, proposer.gasper.consensus_chain, proposer.attestations))
+        self.logging.debug('Proposer Node {}: Consensus View {} Consensus Attestations: {}'.format(
+            proposer, proposer.gasper.consensus_chain, proposer.state.attestations))
 
         malicious_committee = False
         for validator_node in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]:
@@ -96,11 +98,10 @@ class SlotEvent(FixedTimeEvent):
 
         if proposer.malicious and malicious_committee:
             self.malicious_slot = True
-            print(
-                'Malicious Node, So disabling block gossiping to honest node'.format(proposer))
-            for validator_node in proposer.malicious_neighbors:
-                validator_node.obstruct_gossiping = True
-            proposer.obstruct_gossiping = True
+            self.logging.warn('Malicious Node {}, So disabling block gossiping to honest node'.format(proposer))
+            for validator_node in self.epoch_event.validators:
+                if validator_node.malicious:
+                    validator_node.obstruct_gossiping = True
 
         return block
     def __repr__(self):
@@ -108,40 +109,40 @@ class SlotEvent(FixedTimeEvent):
 
 
 class AttestationEvent(FixedTimeEvent):
-    def __init__(self, interval, offset, slot_event, epoch_event, rng=None):
+    def __init__(self, interval, offset, slot_event, epoch_event, rng=None, logging=logging):
         super().__init__(interval, offset, rng=rng)
         self.slot_event = slot_event
         self.epoch_event = epoch_event
+        self.logging = logging.getLogger('Attestation {}'.format(self.counter))
 
     def event(self):
         attestations = []
-        print('providing attestation for slot: {}'.format(self.slot_event.counter))
+        self.logging.debug('providing attestation for slot: {}'.format(self.slot_event.counter))
         for validator_node in self.epoch_event.committees[self.slot_event.counter % SLOTS_PER_EPOCH]:
             if validator_node.is_attesting:                 
-                print('Called node {} for attesting'.format(validator_node))
+                self.logging.debug('Called node {} for attesting'.format(validator_node))
                 attestations.append(validator_node.attest(self.slot_event.counter))
-                print('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
-                    validator_node, validator_node.gasper.consensus_chain, validator_node.attestations))
+                self.logging.debug('Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(
+                    validator_node, validator_node.gasper.consensus_chain, validator_node.state.attestations))
         return attestations
     def __repr__(self):
         return 'Chain Attestation {}'.format(self.counter)
 
 
 class AdversaryEvent(FixedTimeEvent):
-    def __init__(self, interval, offset, slot_event, epoch_event, rng=None):
+    def __init__(self, interval, offset, slot_event, epoch_event, rng=None, logging=logging):
         super().__init__(interval, offset, rng=rng)
         self.epoch_event = epoch_event
         self.slot_event = slot_event
+        self.logging = logging.getLogger('Attack {}'.format(self.counter))
 
     def event(self):
         if self.slot_event.malicious_slot:
-            print('Malicious Event: release the obstruction of the gossiping the block to rest of the peers for slot: {}'.format(
+            self.logging.warn('Malicious Event: release the obstruction of the gossiping the block to rest of the peers for slot: {}'.format(
                 self.slot_event.counter))
-            proposer = self.epoch_event.proposers[self.slot_event.counter %
-                                                  SLOTS_PER_EPOCH]
-            for validator_node in proposer.malicious_neighbors:
-                validator_node.obstruct_gossiping = False
-            proposer.obstruct_gossiping = False
+            for validator_node in self.epoch_event.validators:
+                if validator_node.malicious:
+                    validator_node.obstruct_gossiping = False
 
     def __repr__(self):
         return 'Chain Slot {}'.format(self.slot_event.counter)

@@ -25,31 +25,6 @@ def to_digraph(blockchain):
             G.add_edge(b.value, b.parent.value)
     return G
 
-
-# def get_cummulative_weight_subTree(given_block, attestations):
-#     # optimize this with dynamic programming approach
-#     total_weights = 0
-#     block_weights = {}
-#     for
-#     for given_block in attestations[].values():
-#         if block in slot_block_weights.keys():
-#             slot_block_weights[block] += 1
-#         else:
-#             slot_block_weights[block] = 1
-
-#     if len(given_block.children) == 0 and given_block in slot_block_weights.keys():
-#         total_weights += slot_block_weights[given_block]
-
-#     else:
-#         total_weights += slot_block_weights[given_block] if given_block in slot_block_weights.keys(
-#         ) else 0
-#         for block in given_block.children:
-#             total_weights += get_cummulative_weight_subTree(
-#                 block.slot, block, attestations)
-
-#     return total_weights
-
-
 def get_cummulative_weight_subTree(given_block, attestations):
     total_weights = 0
     only_attestation_weights = 0
@@ -62,8 +37,7 @@ def get_cummulative_weight_subTree(given_block, attestations):
 
     if len(given_block.children) != 0:
         for block in given_block.children:
-            total_weights += get_cummulative_weight_subTree(block, attestations)[
-                0]
+            total_weights += get_cummulative_weight_subTree(block, attestations)[0]
 
     return total_weights, only_attestation_weights
 
@@ -128,26 +102,17 @@ if __name__ == "__main__":
     model = Model(
         graph=net_p2p,
         tau_block=5,
-        tau_attest=12,
-        malicious_percent=0
+        tau_attest=10,
+        malicious_percent=0.2
     )
-    model.run(640)
+    model.run(320)
 
     rng_node = np.random.default_rng().choice(model.validators)
-    rng_node.gasper.lmd_ghost(rng_node.local_blockchain, rng_node.attestations)
+    rng_node.gasper.lmd_ghost(rng_node.state.local_blockchain, rng_node.state.attestations)
     print('\n attestations', rng_node.gasper.get_latest_attestations(
-        rng_node.attestations))
+        rng_node.state.attestations))
     print(rng_node.gasper.consensus_chain)
     print(model.results())
-    draw_blockchain(model.god_view_blocks, rng_node.gasper.get_latest_attestations(rng_node.attestations),
+    draw_blockchain(model.god_view_blocks, rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
                     rng_node.gasper.get_head_block())
-
-    rng_node2 = np.random.default_rng().choice(model.validators)
-    rng_node2.gasper.lmd_ghost(rng_node2.local_blockchain, rng_node2.attestations)
-    print('\n attestations', rng_node2.gasper.get_latest_attestations(
-        rng_node2.attestations))
-    print(rng_node2.gasper.consensus_chain)
-    print(model.results())
-    draw_blockchain(model.god_view_blocks, rng_node2.gasper.get_latest_attestations(rng_node2.attestations),
-                    rng_node2.gasper.get_head_block())
 
