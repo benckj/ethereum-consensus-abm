@@ -1,5 +1,8 @@
 import networkx as nx
 import numpy as np
+import logging
+
+from .constants import *
 
 
 class Network:
@@ -48,12 +51,13 @@ class Block:
         self.children = set()
         self.parent = parent
         self.value = value
+        self.booster_weight = 0
+        self.slot = slot
 
         if parent == None:
             self.parent = None
             self.height = 0
             self.emitter = "genesis"
-            self.slot = slot
             self.predecessors = {self}
 
         else:
@@ -63,9 +67,10 @@ class Block:
             parent.children.add(self)
             self.predecessors = parent.predecessors.copy()
             self.predecessors.add(self)
-            self.slot = slot
 
     def __repr__(self):
+        if not isinstance(self, Block):
+            return None
         return '<Block {} (h={}) (s={})>'.format(self.value, self.height, self.slot)
 
     def __next__(self):
@@ -73,6 +78,27 @@ class Block:
             return self.parent
         else:
             raise StopIteration
+
+    def __eq__(self, other):
+        if not isinstance(other, Block):
+            return False
+        return self.parent == other.parent and self.value == other.value and self.slot == other.slot and self.height == other.height and self.emitter == other.emitter
+
+    def __hash__(self):
+        if not isinstance(self, Block):
+            return None
+        return hash((self.parent, self.value, self.slot, self.height, self.emitter))
+
+    def update_receiving(self, chainstate):
+        if chainstate.slot == self.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
+            self.booster_weight = PROPOSER_SCORE_BOOST
+        else:
+            self.booster_weight = 0
+
+    def copy(self):
+        obj = type(self).__new__(self.__class__)
+        obj.__dict__.update(self.__dict__)
+        return obj
 
 
 class Attestation():
@@ -100,3 +126,55 @@ class Attestation():
 
     def __repr__(self):
         return '<Attestation: Block {} by node {}>'.format(self.block.value, self.slot, self.attestor.id)
+
+
+class ChainState():
+    def __init__(self, time, epoch, slot, slot_committee_weight, genesis_block, logging=logging):
+        self.time = time
+        self.epoch = epoch
+        self.slot = slot
+        self.slot_committee_weight = slot_committee_weight
+        self.logging = logging.getLogger('ChainState')
+
+        # [TODO]can add both Attestations, Blockchain view, ReOrg counts snapshot of the chain before and after attack
+        self.god_view_blocks = set([genesis_block])
+        self.god_view_attestations = {}
+
+        self.reorg_count = 0
+
+
+    def update_epoch(self, new_epoch):
+        if new_epoch < self.epoch:
+            self.logging.error(
+                'New epoch should be greater than current epoch')
+        self.epoch = new_epoch
+
+    def update_slot(self, new_slot):
+        if new_slot < self.slot:
+            self.logging.error('New slot should be greater than current_slot')
+        self.slot = new_slot
+
+    def update_time(self, new_time):
+        if new_time < self.time:
+            self.logging.error('New time should be greater than current')
+        self.time = new_time
+
+    def update_gods_view(self, block=None, attestation=None):
+        if block:
+            self.god_view_blocks.add(block)
+        if attestation:
+            if attestation.slot not in self.god_view_attestations.keys():
+                self.god_view_attestations[attestation.slot] = {}
+            self.god_view_attestations[attestation.slot][attestation.attestor] = attestation.block
+
+    def update_slot_committee_weight(self, weight):
+        self.slot_committee_weight = weight
+
+    def __eq__(self, other):
+        return self.time == other.time and self.slot == other.slot and self.slot_committee_weight == other.slot_committee_weight
+
+    def __hash__(self):
+        return hash((self.time, self.slot, self.slot_committee_weight))
+
+    def __repr__(self):
+        return '<Slot: {} at {} with committee weight {}>'.format(self.slot, self.time, self.slot_committee_weight)

@@ -12,6 +12,7 @@ def suite():
     suite.addTest(GHOST_TestCase('test_onelevel_tieweight'))
     suite.addTest(GHOST_TestCase('test_twolevel_heavyweight'))
     suite.addTest(GHOST_TestCase('test_threelevel_heavyweight'))
+    suite.addTest(GHOST_TestCase('test_from_annotated_spec'))
     suite.addTest(ExAnteReOrg_TestCase('produce_emptyslot'))
     suite.addTest(ExAnteReOrg_TestCase('produce_emptySlot_and_blockinlater'))
     suite.addTest(ExAnteReOrg_TestCase('reorg'))

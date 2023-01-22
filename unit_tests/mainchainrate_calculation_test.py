@@ -19,6 +19,8 @@ class MainChainRate_TestCases(unittest.TestCase):
 
         genesis = Block('0', "genesis", 0)
         mock_node = Node(genesis,0)
+        mock_node1 = Node(genesis,1)
+        mock_node2 = Node(genesis,2)
 
         mock_blockchain.update([genesis])
 
@@ -59,15 +61,15 @@ class MainChainRate_TestCases(unittest.TestCase):
         # mock attestations
 
         mock_attestations = {
-            1: {mock_node: block_1},
-            2: {mock_node: block_1},
-            3: {mock_node: block_3},
-            4: {mock_node: block_4},
+            1: {mock_node: block_1, mock_node1: block_1, mock_node2: block_1 },
+            2: {mock_node: block_1, mock_node1: block_1, mock_node2: block_2 },
+            3: {mock_node: block_3, mock_node1: block_3, mock_node2: block_2 },
+            4: {mock_node: block_3, mock_node1: block_3, mock_node2: block_4,},
         }
 
         ###################
         # mock consensus
-        mock_node.gasper.lmd_ghost(mock_attestations)
+        mock_node.gasper.lmd_ghost(mock_blockchain,mock_attestations)
 
         # testing
         self.assertEqual(mock_node.gasper.calculate_mainchain_rate(mock_blockchain),0.6)
