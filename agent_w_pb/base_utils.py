@@ -91,7 +91,7 @@ class Block:
 
     def update_receiving(self, chainstate):
         if chainstate.slot == self.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
-            self.booster_weight = PROPOSER_SCORE_BOOST
+            self.booster_weight = chainstate.proposer_vote_boost
         else:
             self.booster_weight = 0
 
@@ -129,11 +129,12 @@ class Attestation():
 
 
 class ChainState():
-    def __init__(self, time, epoch, slot, slot_committee_weight, genesis_block, logging=logging):
+    def __init__(self, time, epoch, slot, slot_committee_weight, proposer_vote_boost, genesis_block, logging=logging):
         self.time = time
         self.epoch = epoch
         self.slot = slot
         self.slot_committee_weight = slot_committee_weight
+        self.proposer_vote_boost = proposer_vote_boost
         self.logging = logging.getLogger('ChainState')
 
         # [TODO]can add both Attestations, Blockchain view, ReOrg counts snapshot of the chain before and after attack

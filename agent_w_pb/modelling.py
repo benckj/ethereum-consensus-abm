@@ -22,13 +22,15 @@ class Model:
                  tau_block=None,
                  tau_attest=None,
                  malicious_percent=0,
-                 adversary_offset=5,
+                 adversary_offset=0,
+                 proposer_vote_boost=0,
                  seed=None,
                  logging=logging
                  ):
 
         self.tau_block = tau_block
         self.tau_attest = tau_attest
+        self.proposer_vote_boost = proposer_vote_boost
 
         # Create network based on the given topology while initialization
         self.network = Network(graph)
@@ -64,7 +66,7 @@ class Model:
 
         self.edges = [(n, k) for n in self.nodes for k in n.neighbors]
 
-        self.chain_state = ChainState(0,0,0, 0, self.genesis_block, self.logging)
+        self.chain_state = ChainState(0,0,0,0, self.proposer_vote_boost, self.genesis_block, self.logging)
 
         self.block_gossip_process = BlockGossipProcess(
             tau=self.tau_block, edges=self.edges, chainstate=self.chain_state)

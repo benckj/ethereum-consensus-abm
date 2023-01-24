@@ -8,3 +8,5 @@ tree_r:type=int:default=2:help=tree parameter branching rate
 tau_block:type=float:default=1.:label=$\tau_{m}$:help=time consumed to gossip a block between 2 nodes
 tau_attestation:type=float:default=0.01:label=$\tau_{nd}$:help=time consumed to gossip an attestation between two nodes
 malicious_stake:type=float:default=0.0:label=$malicious_stake$:help=percent of the malicious nodes in the network
+adversary_offset:type=int:default=0:label=$adversary_offset$:help=The offset at which the block has to released in terms of timing during a attack condition
+proposer_vote_boost:type=float:default=0.0:label=$proposer_vote_boost$:help=proposer vote boosting percent of the entire slot committe weight

@@ -56,7 +56,6 @@ class EpochEvent(FixedTimeEvent):
         for i in range(1, self.leftover+1):
             self.committees[j[i-1]].append(self.validators[-i])
 
-        self.logging.debug(self.committees, self.proposers)
         self.logging.debug('New Epoch: Committees formed')
 
         return

@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # As mentioned in the Stochatic Modelling paper,
     # the number of neighbors fixed but have to experiment multiple topologies
     net_p2p = nx.barabasi_albert_graph(
-        128, 8)
+        32, 3)
     lcc_set = max(nx.connected_components(net_p2p), key=len)
     net_p2p = net_p2p.subgraph(lcc_set).copy()
     net_p2p = nx.convert_node_labels_to_integers(
@@ -102,29 +102,33 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=5,
-        tau_attest=10,
-        malicious_percent=0
+        tau_block=0.5,
+        tau_attest=0.5,
+        malicious_percent=0,
+        adversary_offset=0,
+        proposer_vote_boost=0,
     )
 
     model.run(1000)
     print('\n Gods View Results',model.results())
 
-    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, model.genesis_block)
+    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, 0, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
     rng_node.gasper.lmd_ghost(end_state, rng_node.state)
-    print('\n attestations', rng_node.gasper.get_latest_attestations(
-        rng_node.state.attestations))
+
+    print('\n attestations', rng_node.gasper.get_latest_attestations(rng_node.state.attestations))
     print(rng_node.gasper.consensus_chain)
     print(model.results(rng_node))
+
     draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
                         rng_node.gasper.get_head_block())
 
     rng_node2 = np.random.default_rng().choice(model.validators)
     rng_node2.gasper.lmd_ghost(end_state, rng_node2.state)
-    print('\n attestations', rng_node2.gasper.get_latest_attestations(
-        rng_node2.state.attestations))
+
+    print('\n attestations', rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations))
     print(rng_node2.gasper.consensus_chain)
     print(model.results(rng_node2))
+    
     draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),
                         rng_node2.gasper.get_head_block())

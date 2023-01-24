@@ -1,5 +1,6 @@
 
 from .constants import *
+from .base_utils import *
 import numpy as np
 import logging
 '''
@@ -15,6 +16,7 @@ class Gasper:
     consensus_chain = {}
     headblock_weights = {}
     accounted_attestations = set()
+    nodes_at = {}
 
     def __init__(self, genesis_block, logging=logging):
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
@@ -22,22 +24,31 @@ class Gasper:
      
 
     def get_latest_attestations(self, attestations):
-        inv_latest_attestaion = {}
-        latest_attestation = {}
         if len(attestations) == 0:
-            return latest_attestation
+            return self.nodes_at
 
-        for slot in range(min(attestations.keys()), max(attestations.keys())+1):
-            if slot in attestations.keys():
-                for node, block in attestations[slot].items():
-                    inv_latest_attestaion.update({node: (slot, block)})
+        attestations_in_tuples = set()
+        for slot, node_attestations in sorted(attestations.items()):
+            if (max(attestations.keys()) >= slot >= (max(attestations.keys()) - 2 * FFG_FINALIZE_SLOTS)):
+                for node, block in node_attestations.items():
+                    attestations_in_tuples.update(
+                        [Attestation(node, block, slot)])
 
-        for node, slot_attestations in inv_latest_attestaion.items():
+        self.logging.debug(attestations_in_tuples)
+        new_attestations = attestations_in_tuples - self.accounted_attestations
+        self.accounted_attestations = attestations_in_tuples
+        self.logging.debug(new_attestations)
+        for attestation in new_attestations:
+            self.nodes_at.update({attestation.attestor: (
+                attestation.slot, attestation.block)})
+
+        latest_attestation = {}
+        for node, slot_attestations in self.nodes_at.items():
             if slot_attestations[0] not in latest_attestation.keys():
                 latest_attestation.update({slot_attestations[0]: {
                     node: slot_attestations[1]}})
             else:
-                latest_attestation[slot_attestations[0]].update( 
+                latest_attestation[slot_attestations[0]].update(
                     {node: slot_attestations[1]})
 
         return latest_attestation
