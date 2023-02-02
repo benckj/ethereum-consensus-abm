@@ -34,10 +34,8 @@ class Gasper:
                     attestations_in_tuples.update(
                         [Attestation(node, block, slot)])
 
-        self.logging.debug(attestations_in_tuples)
         new_attestations = attestations_in_tuples - self.accounted_attestations
         self.accounted_attestations = attestations_in_tuples
-        self.logging.debug(new_attestations)
         for attestation in new_attestations:
             self.nodes_at.update({attestation.attestor: (
                 attestation.slot, attestation.block)})
@@ -73,6 +71,19 @@ class Gasper:
         # using booster weight for the blocks which are in
         return total_weights + given_block.booster_weight * chainstate.slot_committee_weight if chainstate.slot == given_block.slot and given_block in node_state.local_blockchain else 0
 
+    def check_re_org(self, chainstate, previous_consensus):
+        reorgable_block_slot = max(chainstate.reorgs.keys()) if len(chainstate.reorgs.keys()) else 0
+        if reorgable_block_slot < self.finalized_head_slot or reorgable_block_slot == chainstate.slot:
+            return
+        skipped_block_previously = True if reorgable_block_slot not in previous_consensus.keys() else False
+        if not skipped_block_previously:
+            return
+        if reorgable_block_slot in self.consensus_chain.keys():
+            block_slot = self.consensus_chain[reorgable_block_slot]
+            if block_slot and block_slot.malicious:
+                chainstate.increment_reorg_count(reorgable_block_slot)
+        return
+
     def lmd_ghost(self, chainstate, node_state):
         # get the latest attestations out of all know attestations
         fork_choice_attestations = self.get_latest_attestations(
@@ -83,7 +94,9 @@ class Gasper:
 
         previous_head = self.consensus_chain[self.finalized_head_slot]
 
-        # clear the previous justified slots
+        previous_consensus = self.consensus_chain.copy()
+
+        # clear the previously justified slots
         self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
         ) if slot <= self.finalized_head_slot}
 
@@ -92,30 +105,37 @@ class Gasper:
                 block) for block in previous_head.children if block in node_state.local_blockchain]
 
             if len(known_children) == 0:
-                return
+                heavyBlock= None
 
-            block_weights = {block: self.get_cummulative_weight_subTree(
-                block, node_state, chainstate) for block in known_children}
+            elif len(known_children) == 1:
+                heavyBlock= known_children[0]
+            
+            elif len(known_children) > 1:
+                block_weights = {block: self.get_cummulative_weight_subTree(
+                    block, node_state, chainstate) for block in known_children}
 
-            block_with_max_votes = [block for block, weight in block_weights.items(
-            ) if weight == max(block_weights.values())]
-            # As seen in the ethereum about ties handling using the max funcrtion which selects the first options if it is equal
-            # https://github.com/ethereum/annotated-spec/blob/master/phase0/fork-choice.md#get_latest_attesting_balance
-            if len(block_with_max_votes) > 1:
-                block_with_max_votes = [block for block in block_with_max_votes if block.slot == min(
-                    [block.slot for block in block_with_max_votes])]
+                block_with_max_votes = [block for block, weight in block_weights.items(
+                ) if weight == max(block_weights.values())]
 
-            heavyBlock = min(block_with_max_votes,
-                             key=lambda block: block.value)
+                # As seen in the ethereum about ties handling using the max funcrtion which selects the first options if it is equal
+                # https://github.com/ethereum/annotated-spec/blob/master/phase0/fork-choice.md#get_latest_attesting_balance
+                if len(block_with_max_votes) > 1:
+                    block_with_max_votes = [block for block in block_with_max_votes if block.slot == min(
+                        [block.slot for block in block_with_max_votes])]
 
-            self.consensus_chain[heavyBlock.slot] = heavyBlock
+                heavyBlock = min(block_with_max_votes,
+                                key=lambda block: block.value)
 
-            # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
-            if heavyBlock.slot % FFG_FINALIZE_SLOTS == 0:
-                self.finalized_head_slot = max(
-                    heavyBlock.slot, self.finalized_head_slot)
+            if heavyBlock:
+                self.consensus_chain[heavyBlock.slot] = heavyBlock
+
+                # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
+                if heavyBlock.slot % FFG_FINALIZE_SLOTS == 0:
+                    self.finalized_head_slot = max(
+                        heavyBlock.slot, self.finalized_head_slot)
 
             previous_head = heavyBlock
+        self.check_re_org(chainstate, previous_consensus)
 
     def get_head_block(self):
         for slot, block in sorted(self.consensus_chain.items(), key=lambda item: item[0],  reverse=True):

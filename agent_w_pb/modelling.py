@@ -50,10 +50,10 @@ class Model:
         self.genesis_block = Block('0', 'genesis', 0)
         self.malicious_shared_state = NodeState(self.genesis_block)
 
-        honest_nodes = [Node(self.genesis_block , i, self.rng)
+        honest_nodes = [Node(self.genesis_block, i, self.rng)
                         for i in range(no_of_honest_nodes)]
 
-        malicious_nodes = [Node(self.genesis_block , no_of_honest_nodes + i, self.rng, malicious=True, shared_state=self.malicious_shared_state, logging=self.logging)
+        malicious_nodes = [Node(self.genesis_block, no_of_honest_nodes + i, self.rng, malicious=True, logging=self.logging)
                            for i in range(no_of_malicious_nodes)]
 
         self.nodes = []
@@ -66,7 +66,8 @@ class Model:
 
         self.edges = [(n, k) for n in self.nodes for k in n.neighbors]
 
-        self.chain_state = ChainState(0,0,0,0, self.proposer_vote_boost, self.genesis_block, self.logging)
+        self.chain_state = ChainState(
+            0, 0, 0, 0, self.proposer_vote_boost, self.genesis_block, self.logging)
 
         self.block_gossip_process = BlockGossipProcess(
             tau=self.tau_block, edges=self.edges, chainstate=self.chain_state)
@@ -83,7 +84,7 @@ class Model:
             SECONDS_PER_SLOT, offset=SECONDS_PER_SLOT/INTERVALS_PER_SLOT, epoch_event=self.epoch_event, chainstate=self.chain_state, rng=self.rng, logging=self.logging)
 
         self.adversary_event = AdversaryEvent(
-            SECONDS_PER_SLOT, offset=adversary_offset, slot_event=self.slot_event, epoch_event=self.epoch_event, chainstate=self.chain_state, rng=self.rng, logging=self.logging)
+            SECONDS_PER_SLOT, offset=adversary_offset, epoch_event=self.epoch_event, chainstate=self.chain_state, rng=self.rng, logging=self.logging)
 
         self.processes = [self.block_gossip_process,
                           self.attestation_gossip_process]
@@ -125,15 +126,25 @@ class Model:
         if analyse_node:
             analyse_node.gasper.lmd_ghost(self.chain_state, analyse_node.state)
         else:
-            analyse_node = Node(self.genesis_block , len(self.network)+1, self.rng)
+            analyse_node = Node(self.genesis_block,
+                                len(self.network)+1, self.rng)
             analyse_node.state.local_blockchain = self.chain_state.god_view_blocks
             analyse_node.state.attestations = self.chain_state.god_view_attestations
             analyse_node.gasper.lmd_ghost(self.chain_state, analyse_node.state)
 
+        malicious_blocks = [
+            block for block in self.chain_state.god_view_blocks if block.malicious]
+
+        reorg_count = len([1 for slot, value in self.chain_state.reorgs.items() if value == 1 ])
+        malicious_slot_count =  len([1 for slot in self.chain_state.reorgs.keys()])
+
         results_dict = {
             "mainchain_rate": analyse_node.gasper.calculate_mainchain_rate(self.chain_state.god_view_blocks),
             "branch_ratio": analyse_node.gasper.calculate_branch_ratio(self.chain_state.god_view_blocks),
-            "blocktree_entropy": analyse_node.gasper.calculate_entropy(self.chain_state.god_view_blocks)
+            "blocktree_entropy": analyse_node.gasper.calculate_entropy(self.chain_state.god_view_blocks),
+            "attack_probability": malicious_slot_count / self.chain_state.slot,
+            "successful_reorgs": reorg_count,
+            "failed_reorgs": malicious_slot_count - reorg_count,
+            "malicious_blocks_percent": len(malicious_blocks) / len(self.chain_state.god_view_blocks)
         }
         return results_dict
-

@@ -47,12 +47,13 @@ class Block:
     transactions     - Number (integer) of transactions in the block
     '''
 
-    def __init__(self, value, emitter, slot, parent=None):
+    def __init__(self, value, emitter, slot, parent=None, malicious=False):
         self.children = set()
         self.parent = parent
         self.value = value
         self.booster_weight = 0
         self.slot = slot
+        self.malicious = malicious
 
         if parent == None:
             self.parent = None
@@ -141,8 +142,16 @@ class ChainState():
         self.god_view_blocks = set([genesis_block])
         self.god_view_attestations = {}
 
-        self.reorg_count = 0
+        self.reorgs = {}
+        self.malicious_slot = True
 
+    def reset_malicious_slot(self):
+        self.malicious_slot = False
+
+    def set_malicious_slot(self):
+        print('updated malicious_slot')
+        self.reorgs.update({self.slot: 0})
+        self.malicious_slot = True
 
     def update_epoch(self, new_epoch):
         if new_epoch < self.epoch:
@@ -170,6 +179,9 @@ class ChainState():
 
     def update_slot_committee_weight(self, weight):
         self.slot_committee_weight = weight
+
+    def increment_reorg_count(self, slot):
+        self.reorgs.update({slot: 1})
 
     def __eq__(self, other):
         return self.time == other.time and self.slot == other.slot and self.slot_committee_weight == other.slot_committee_weight

@@ -102,22 +102,20 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=0.5,
-        tau_attest=0.5,
-        malicious_percent=0,
-        adversary_offset=0,
+        tau_block=5,
+        tau_attest=5,
+        malicious_percent=0.4,
+        adversary_offset=5,
         proposer_vote_boost=0,
     )
 
-    model.run(1000)
+    model.run(700)
     print('\n Gods View Results',model.results())
 
     end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, 0, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
     rng_node.gasper.lmd_ghost(end_state, rng_node.state)
 
-    print('\n attestations', rng_node.gasper.get_latest_attestations(rng_node.state.attestations))
-    print(rng_node.gasper.consensus_chain)
     print(model.results(rng_node))
 
     draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
@@ -126,8 +124,6 @@ if __name__ == "__main__":
     rng_node2 = np.random.default_rng().choice(model.validators)
     rng_node2.gasper.lmd_ghost(end_state, rng_node2.state)
 
-    print('\n attestations', rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations))
-    print(rng_node2.gasper.consensus_chain)
     print(model.results(rng_node2))
     
     draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),

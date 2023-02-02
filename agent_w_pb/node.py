@@ -3,10 +3,11 @@ from .gasper_consensus import *
 import numpy as np
 import logging
 
+
 class NodeState:
-    def __init__(self, block, logging = logging) -> None:
+    def __init__(self, block, logging=logging) -> None:
         self.local_blockchain = set([block])
-        self.attestations = {} # {slot: {node: block}}
+        self.attestations = {}  # {slot: {node: block}}
         self.gossip_data = {}  # {slot: {"block": block, "attestations": []}}
         self.cached_attestations = set()  # {tuple(slot,node,block)}
         self.cached_blocks = set()
@@ -19,13 +20,11 @@ class NodeState:
         return (self.local_blockchain - replica).pop()
 
     def add_block(self, slot, chainstate: ChainState, received_block: Block):
-
         block = received_block.copy()
         block.update_receiving(chainstate)
 
         # as read in the gossiping rules, A Node should not accept a block where it does not
         # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_block
-
         if (block.parent not in self.local_blockchain):
             self.cached_blocks.add(block)
             return
@@ -38,9 +37,8 @@ class NodeState:
         # add new_block to gossiping data
         if slot not in self.gossip_data.keys():
             self.gossip_data[slot] = {"block": block}
-        else: 
+        else:
             self.gossip_data[slot].update({"block": block})
-
 
     def add_attestation(self, attestation):
         if attestation.block not in self.local_blockchain:
@@ -60,8 +58,8 @@ class NodeState:
             self.gossip_data[attestation.slot].update({"attestations": set()})
 
         # Copy the attestation to gossip
-        self.gossip_data[attestation.slot]["attestations"].add(attestation)  
-    
+        self.gossip_data[attestation.slot]["attestations"].add(attestation)
+
     def check_cached_blocks(self):
         for block in self.cached_blocks.copy():
             if block.parent in self.local_blockchain:
@@ -95,7 +93,7 @@ class Node:
         self.id = id
         # logging functionality
         self.logging = logging.getLogger('Node {}'.format(id))
-           
+
         # Malicious Functionality
         self.malicious = malicious
 
@@ -105,12 +103,11 @@ class Node:
 
         self.is_attesting = False
         self.neighbors = set()  # set of neighbours peers on the p2p network
-     
+
         self.obstruct_gossiping = False
 
-
     def use_lmd_ghost(self, chainstate):
-        self.gasper.lmd_ghost(chainstate, self.state)                              
+        self.gasper.lmd_ghost(chainstate, self.state)
         return self.gasper.get_head_block()
 
     def propose_block(self, chainstate: ChainState):
@@ -121,7 +118,7 @@ class Node:
         # check if the slot is colliding
         new_block = Block('E{}_S{}'.format(
             chainstate.epoch, chainstate.slot), emitter=self, slot=chainstate.slot,
-                          parent=head_block)
+            parent=head_block, malicious=self.malicious)
         self.logging.debug('Block proposed {} in slot {} by {}, with head as {}'.format(
             new_block, chainstate.slot, self, head_block))
 
@@ -129,6 +126,8 @@ class Node:
         self.state.add_block(chainstate.slot, chainstate, new_block)
 
         chainstate.update_gods_view(block=new_block)
+
+        return new_block
 
     def gossip_block(self, chainstate: ChainState, listening_node):
         if self.obstruct_gossiping == True:
@@ -148,10 +147,11 @@ class Node:
             if listening_slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[listening_slot].keys():
                 if self.state.gossip_data[listening_slot]["block"] != listening_block or self.state.gossip_data[listening_slot]["block"] != None:
                     continue
-                
+
             if listening_block not in self.state.local_blockchain:
                 # Add to local of the node
-                self.state.add_block(listening_slot, chainstate, listening_block)
+                self.state.add_block(
+                    listening_slot, chainstate, listening_block)
 
         # Attest if the node is in committee
         if self.is_attesting == True and chainstate.slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[chainstate.slot] and self.state.gossip_data[chainstate.slot]["block"]:
@@ -159,13 +159,15 @@ class Node:
                 return
             self.attest(chainstate)
 
+        self.gasper.lmd_ghost(chainstate, self.state)
+
     # Should take a new incoming block into consideration
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
         # Fetch the Block2Attest, taking the listened blocks, LISTs in python behave LIFO
-        attesting_slot, attesting_block = self.gasper.get_block2attest(chainstate,self.state)
-            # self.state.local_blockchain.copy(), self.state.attestations)
+        attesting_slot, attesting_block = self.gasper.get_block2attest(
+            chainstate, self.state)
 
         self.logging.debug('Block attested {} with weight {}'.format(
             attesting_block, attesting_block.booster_weight))
@@ -182,6 +184,8 @@ class Node:
         # As a node must attest only once in a slot
         self.is_attesting = False
 
+        return attestation
+
     def gossip_attestation(self, chainstate: ChainState, listening_node):
         if self.obstruct_gossiping == True:
             return
@@ -195,11 +199,12 @@ class Node:
 
                 if "attestations" not in gossiping_node.state.gossip_data[listening_slot].keys():
                     continue
-                
-                
+
                 for attestation in gossiping_node.state.gossip_data[
-                    listening_slot]["attestations"]:
+                        listening_slot]["attestations"]:
                     self.state.add_attestation(attestation)
+
+        self.gasper.lmd_ghost(chainstate, self.state)
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)

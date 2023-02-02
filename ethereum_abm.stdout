@@ -1,3 +1,7 @@
 mainchain_rate: help = 1-orphan rate
 branch_ratio: help = branching ratio
 blocktree_entropy: help = branching ratio
+successful_reorgs: help = successful reorgs
+malicious_blocks_percent: help = malicious block percent
+failed_reorgs: help = failed reorgs
+attack_probability: help = attack probability
