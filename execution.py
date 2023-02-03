@@ -55,6 +55,7 @@ def draw_blockchain(all_known_blocks, attestations, head_block):
 
     total_attestations = sum([attestations_weights[b] for b in pos.keys()])
 
+    print(total_attestations)
     weight_list = [block_weights[b] for b in pos.keys()]
     attest_list = [attestations_weights[b] for b in pos.keys()]
 
@@ -101,26 +102,29 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=0.5,
-        tau_attest=0.5,
-        malicious_percent=0
+        tau_block=10,
+        tau_attest=10,
+        malicious_percent=0.4,
+        adversary_offset=5,
+        proposer_vote_boost=0.4,
     )
-    model.run(64)
 
+    model.run(300)
+    print('\n Gods View Results',model.results())
+
+    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 10, 0.7, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
-    rng_node.gasper.lmd_ghost(rng_node.state.local_blockchain, rng_node.state.attestations)
-    print('\n attestations', rng_node.gasper.get_latest_attestations(
-        rng_node.state.attestations))
-    print(rng_node.gasper.consensus_chain)
-    print(model.results())
-    draw_blockchain(model.god_view_blocks, rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
+    rng_node.gasper.lmd_ghost(end_state, rng_node.state)
+
+    print(model.results(rng_node))
+
+    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
                         rng_node.gasper.get_head_block())
 
     rng_node2 = np.random.default_rng().choice(model.validators)
-    rng_node2.gasper.lmd_ghost(rng_node2.state.local_blockchain, rng_node2.state.attestations)
-    print('\n attestations', rng_node2.gasper.get_latest_attestations(
-        rng_node2.state.attestations))
-    print(rng_node2.gasper.consensus_chain)
-    print(model.results())
-    draw_blockchain(model.god_view_blocks, rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),
+    rng_node2.gasper.lmd_ghost(end_state, rng_node2.state)
+
+    print(model.results(rng_node2))
+    
+    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),
                         rng_node2.gasper.get_head_block())

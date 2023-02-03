@@ -34,16 +34,17 @@ class BlockGossipProcess(Process):
     - tau,      float, process latency
     """
 
-    def __init__(self, tau, edges, rng=np.random.default_rng()):
+    def __init__(self, tau, edges, chainstate, rng=np.random.default_rng()):
         self.edges = edges
         self.num_edges = len(edges)
+        self.chainstate = chainstate
 
         super().__init__((tau/self.num_edges))
         self.rng = rng
 
-    def event(self,slot):
+    def event(self):
         gossiping_node, listening_node = self.rng.choice(self.edges)
-        return gossiping_node.gossip_block(listening_node,slot)
+        gossiping_node.gossip_block(self.chainstate, listening_node)
 
 
 class AttestationGossipProcess(Process):
@@ -53,15 +54,16 @@ class AttestationGossipProcess(Process):
     - tau,      float, process latency
     """
 
-    def __init__(self, tau, edges, rng=np.random.default_rng()):
+    def __init__(self, tau, edges, chainstate, rng=np.random.default_rng()):
         self.edges = edges
         self.num_edges = len(edges)
+        self.chainstate = chainstate
 
         super().__init__((tau/self.num_edges))
         self.rng = rng
 
-    def event(self,slot):
+    def event(self):
         gossiping_node, listening_node = self.rng.choice(self.edges)
-        gossiping_node.gossip_attestation(listening_node,slot)
-        return
+        gossiping_node.gossip_attestation(self.chainstate, listening_node)
+        
 

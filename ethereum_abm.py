@@ -14,7 +14,7 @@
 """
 
 from spg.runner import SingleRunner
-from agent_w_pb.modelling import Model
+from agent.modelling import Model
 import networkx as nx
 
 
