@@ -13,18 +13,20 @@ class NodeState:
         self.cached_blocks = set()
         self.proposer_weight = None
         self.logging = logging.getLogger('Node State')
+        self.latest_block = block
 
     def get_block(self, block):
         replica = self.local_blockchain.copy()
         replica.remove(block)
         return (self.local_blockchain - replica).pop()
 
-    def add_block(self, slot, chainstate: ChainState, received_block: Block):
+    def add_block(self, chainstate: ChainState, received_block: Block):
+        """
+        Node's State Block and gossip data block per slot are updated but only if the block is in the node's state or else the attestation is queued.
+        """
         block = received_block.copy()
         block.update_receiving(chainstate)
 
-        # as read in the gossiping rules, A Node should not accept a block where it does not
-        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_block
         if (block.parent not in self.local_blockchain):
             self.cached_blocks.add(block)
             return
@@ -35,12 +37,23 @@ class NodeState:
             self.check_cached_attestations()
 
         # add new_block to gossiping data
-        if slot not in self.gossip_data.keys():
-            self.gossip_data[slot] = {"block": block}
+        if block.slot not in self.gossip_data.keys():
+            self.gossip_data[block.slot] = {"block": block}
         else:
-            self.gossip_data[slot].update({"block": block})
+            if "block" not in self.gossip_data[block.slot].keys() or self.gossip_data[block.slot]["block"] == None:
+                self.gossip_data[block.slot].update({"block": block})
+            
+        if block.slot == chainstate.slot: 
+            self.latest_block = block
+        else:
+            max_key = max([k for k, v in self.gossip_data.items() if "block" in v.keys()])
+            if max_key > 0:
+                self.latest_block = self.gossip_data[max_key]["block"]
 
     def add_attestation(self, attestation):
+        """
+        Node's State attestations and gossip data attestation per slot are updated but only if the block is in the node's state or else the attestation is queued.
+        """
         if attestation.block not in self.local_blockchain:
             # Cache the attestation if the node does not know the block yet.
             self.cached_attestations.add(attestation)
@@ -123,7 +136,7 @@ class Node:
             new_block, chainstate.slot, self, head_block))
 
         # add block to local blockchain
-        self.state.add_block(chainstate.slot, chainstate, new_block)
+        self.state.add_block(chainstate, new_block)
 
         chainstate.update_gods_view(block=new_block)
 
@@ -135,10 +148,18 @@ class Node:
         listening_node.listen_block(chainstate, self)
 
     def listen_block(self,  chainstate: ChainState, gossiping_node,):
-        """Receive new block and update local information accordingly.
         """
+        Listening node tries to read all the blocks from the gossiping node and update local state.
+        Below are the conditions it follows:
+        - listening block's slot should not be greater than current chain state slot
+        - listening block's slot should not be lesser than node finalized head slot
+        - listening node should have the first block listened in a particular slot.
+        """
+        # as read in the gossiping rules, A Node should not accept a block where it does not
+        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_bloc
+
         for listening_slot in gossiping_node.state.gossip_data.keys():
-            if chainstate.slot > listening_slot > self.gasper.finalized_head_slot or ("block" not in gossiping_node.state.gossip_data[listening_slot].keys()):
+            if chainstate.slot < listening_slot  or listening_slot < self.gasper.finalized_head_slot or ("block" not in gossiping_node.state.gossip_data[listening_slot].keys()):
                 continue
 
             listening_block = gossiping_node.state.gossip_data[listening_slot]["block"]
@@ -151,7 +172,7 @@ class Node:
             if listening_block not in self.state.local_blockchain:
                 # Add to local of the node
                 self.state.add_block(
-                    listening_slot, chainstate, listening_block)
+                    chainstate, listening_block)
 
         # Attest if the node is in committee
         if self.is_attesting == True and chainstate.slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[chainstate.slot] and self.state.gossip_data[chainstate.slot]["block"]:
@@ -161,11 +182,10 @@ class Node:
 
         self.gasper.lmd_ghost(chainstate, self.state)
 
-    # Should take a new incoming block into consideration
+
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
-        # Fetch the Block2Attest, taking the listened blocks, LISTs in python behave LIFO
         attesting_slot, attesting_block = self.gasper.get_block2attest(
             chainstate, self.state)
 
@@ -192,8 +212,15 @@ class Node:
         listening_node.listen_attestation(chainstate, self)
 
     def listen_attestation(self, chainstate, gossiping_node):
+        """
+        Listening node tries to read all the attestations from the gossiping node and update local state.
+        Below are the conditions it follows:
+        - listening node should accept an attestation only if the attestation slot within ATTESTATION_PROPAGATION_SLOT_RANGE
+        - listening node should accept an attestation of the same epoch only.
+        - Further adding into the state has further validation check in the `NodeState` class `add_attestation` function.
+        """
         # as read in the gossiping attestation rules, A Node should not accept an attestation until ATTESTATION_PROPAGATION_SLOT_RANGE of slots
-        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#attestation-subnets
+        # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_aggregate_and_proof
         for listening_slot in gossiping_node.state.gossip_data.keys():
             if listening_slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= chainstate.slot >= listening_slot and chainstate.slot // SLOTS_PER_EPOCH == listening_slot // SLOTS_PER_EPOCH:
 

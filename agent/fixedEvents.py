@@ -106,7 +106,7 @@ class SlotEvent(FixedTimeEvent):
             self.logging.warn('Malicious Node {}, So disabling block gossiping to honest node and coping the block and attestation to the rest of malicious group'.format(proposer))
             for validator_node in self.epoch_event.malicious_validators:
                 validator_node.obstruct_gossiping = True
-                validator_node.state.add_block(self.counter, self.chainstate, block)
+                validator_node.state.add_block(self.chainstate, block)
 
             for validator_node in self.epoch_event.malicious_validators:
                 if validator_node.is_attesting: 

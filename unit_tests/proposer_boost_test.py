@@ -25,9 +25,9 @@ class PB_Test(unittest.TestCase):
         block2 = Block('1B', self.nodes[1], 1, self.genesis_block)
 
         chain_state = ChainState(3, 1, 1, 10, 0, self.genesis_block)
-        self.analyze_node.state.add_block(1, chain_state, block2)
+        self.analyze_node.state.add_block( chain_state, block2)
         chain_state.update_time(5)
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block( chain_state, block1)
 
         attestations = {1: {self.nodes[i]: block1 if i in range(
             int(0.5 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
@@ -54,9 +54,9 @@ class PB_Test(unittest.TestCase):
         block2 = Block('1B', self.nodes[1], 1, self.genesis_block)
 
         chain_state = ChainState(3, 1, 1, 6, 0.4, self.genesis_block)
-        self.analyze_node.state.add_block(1, chain_state, block2)
+        self.analyze_node.state.add_block( chain_state, block2)
         chain_state.update_time(5)
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block( chain_state, block1)
 
         attestations = {1: {self.nodes[i]: block1 if i in range(
             int(0.5 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
@@ -80,7 +80,7 @@ class PB_Test(unittest.TestCase):
         block1 = Block('n', self.nodes[0], 1, self.genesis_block)
 
         # Slot 1: Block Listened
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block( chain_state, block1)
 
         # Slot 1: Attestation Listened
         attestations = {
@@ -119,7 +119,7 @@ class PB_Test(unittest.TestCase):
                          0: self.genesis_block, 1: block1, })
 
         chain_state.update_time(22)
-        self.analyze_node.state.add_block(2, chain_state, block2)
+        self.analyze_node.state.add_block( chain_state, block2)
         attestations = {2: {self.nodes[i]: block2 for i in [5]}}
 
         for slot, node_attestaions in attestations.items():
@@ -131,7 +131,7 @@ class PB_Test(unittest.TestCase):
         chain_state.update_slot(3)
         block3 = Block('n+2', self.nodes[0], 3, block1)
 
-        self.analyze_node.state.add_block(3, chain_state, block3)
+        self.analyze_node.state.add_block( chain_state, block3)
         attestations = {3: {self.nodes[i]: block3 if i in [
             6] else block2 for i in [6, 7, 8]}}
 

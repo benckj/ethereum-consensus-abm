@@ -132,7 +132,7 @@ class Gasper:
     def get_block2attest(self, chain_state, node_state):
         self.lmd_ghost(chain_state, node_state)
         current_head_slot, current_head_block = self.get_head_block()
-        latest_block = node_state.local_blockchain.copy().pop()
+        latest_block = node_state.latest_block
 
         # Compare the block slot vs the head_slot
         # If the head_slot is greater and this block is propose in the already consensus achieved slots.

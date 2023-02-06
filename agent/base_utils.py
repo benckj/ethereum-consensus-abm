@@ -19,6 +19,9 @@ class Network:
         return len(self.graph)
 
     def set_neighborhood(self, nodes):
+        """
+        Function is used to set neighbours property of the nodes based on the edges in the network graph
+        """
         # dictionary mapping nodes in the nx.graph to their peers on p2p graph
 
         # Shuffle the nodes to
@@ -91,6 +94,9 @@ class Block:
         return hash((self.parent, self.value, self.slot, self.height, self.emitter))
 
     def update_receiving(self, chainstate):
+        """
+        Function is used to add booster_weight to the block recevied by a node, this is used in the `add_block` in the `NodeState` class. 
+        """
         if chainstate.slot == self.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
             self.booster_weight = chainstate.proposer_vote_boost
         else:
@@ -137,11 +143,8 @@ class ChainState():
         self.slot_committee_weight = slot_committee_weight
         self.proposer_vote_boost = proposer_vote_boost
         self.logging = logging.getLogger('ChainState')
-
-        # [TODO]can add both Attestations, Blockchain view, ReOrg counts snapshot of the chain before and after attack
         self.god_view_blocks = set([genesis_block])
         self.god_view_attestations = {}
-
         self.reorgs = []
         self.malicious_slot = True
 

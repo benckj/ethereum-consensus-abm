@@ -103,13 +103,13 @@ if __name__ == "__main__":
     model = Model(
         graph=net_p2p,
         tau_block=10,
-        tau_attest=10,
+        tau_attest=100,
         malicious_percent=0.4,
         adversary_offset=5,
-        proposer_vote_boost=0.4,
+        proposer_vote_boost=0.7,
     )
 
-    model.run(300)
+    model.run(390)
     print('\n Gods View Results',model.results())
 
     end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 10, 0.7, model.genesis_block)

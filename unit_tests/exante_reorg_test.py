@@ -18,7 +18,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         block2 = Block('1B', self.nodes[1], 1, self.genesis_block)
 
         chain_state = ChainState(14, 1, 2, 0, 0, self.genesis_block)
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block(chain_state, block1)
         attestations = {1: {self.nodes[i]: block1 if i in range(
             int(0.5 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
 
@@ -36,7 +36,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         
         chain_state.update_slot(3)
         # Logic to see produce an empty slot
-        self.analyze_node.state.add_block(2, chain_state, block2)
+        self.analyze_node.state.add_block(chain_state, block2)
         attestations = {2: {self.nodes[i]: block1 for i in range(int(0.6 * self.no_of_nodes))}}
 
         for slot, node_attestaions in attestations.items():
@@ -52,7 +52,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         # Retest the level one here
         chain_state = ChainState(14, 1, 2, 0, 0, self.genesis_block)
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block(chain_state, block1)
 
         attestations = {
             1: {self.nodes[i]: block1 for i in range(self.no_of_nodes)}}
@@ -83,7 +83,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         chain_state.update_slot(4)
 
         block2 = Block('n+2', self.nodes[0], 3, block1)
-        self.analyze_node.state.add_block(3, chain_state, block2)
+        self.analyze_node.state.add_block(chain_state, block2)
         attestations = {3: {self.nodes[i]: block2 for i in range(int(0.6 * self.no_of_nodes))}}
 
         for slot, node_attestaions in attestations.items():
@@ -100,7 +100,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         block1 = Block('n', self.nodes[0], 1, self.genesis_block)
 
         # Slot 1: Block Listened
-        self.analyze_node.state.add_block(1, chain_state, block1)
+        self.analyze_node.state.add_block(chain_state, block1)
 
         # Slot 1: Attestation Listened
         attestations = {
@@ -136,7 +136,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
                          0: self.genesis_block, 1: block1, })
 
         chain_state.update_time(22)
-        self.analyze_node.state.add_block(2, chain_state, block2)
+        self.analyze_node.state.add_block(chain_state, block2)
         attestations = {2: {self.nodes[i]: block2 for i in [5]}}
 
         for slot, node_attestaions in attestations.items():
@@ -147,7 +147,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         chain_state.update_slot(3)     
         block3 = Block('n+2', self.nodes[0], 3, block1)
 
-        self.analyze_node.state.add_block(3, chain_state, block3)
+        self.analyze_node.state.add_block(chain_state, block3)
         attestations = {3: {self.nodes[i]: block3 if i in [6] else block2 for i in [6,7,8]}}
 
         for slot, node_attestaions in attestations.items():
@@ -163,7 +163,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
         chain_state.update_slot(4)
 
         block4 = Block('n+3', self.nodes[0], 4, block2)
-        self.analyze_node.state.add_block(4, chain_state, block4)
+        self.analyze_node.state.add_block(chain_state, block4)
 
         attestations = {4: {self.nodes[i]: block4 for i in [9,10,11]}}
         
