@@ -2,3 +2,4 @@ mainchain_rate: help = 1-orphan rate
 branch_ratio: help = branching ratio
 blocktree_entropy: help = branching ratio
 diameter: help = p2p diameter
+average_shortest_path: help = p2p average shortest path

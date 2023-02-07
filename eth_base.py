@@ -510,7 +510,8 @@ class Model:
             "mainchain_rate": calculate_mainchain_rate(self.blockchain, god_view_attestations),
             "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations),
             "blocktree_entropy": calculate_entropy(self.blockchain),
-            "diameter": calculate_diameter(self.Network)
+            "diameter": calculate_diameter(self.Network),
+            "average_shortest_path": calculate_average_shortest_path(self.Network)
             }
         return results_dict
 
@@ -659,3 +660,8 @@ def calculate_diameter(net):
     """Compute diameter of the p2p network
     """
     return nx.diameter(net.network)
+
+def calculate_average_shortest_path(net):
+    """Compute diameter of the p2p network
+    """
+    return nx.average_shortest_path_length(net.network)
