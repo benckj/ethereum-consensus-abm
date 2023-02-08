@@ -510,8 +510,8 @@ class Model:
             "mainchain_rate": calculate_mainchain_rate(self.blockchain, god_view_attestations),
             "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations),
             "blocktree_entropy": calculate_entropy(self.blockchain),
-            "diameter": calculate_diameter(self.Network),
-            "average_shortest_path": calculate_average_shortest_path(self.Network)
+            "diameter": calculate_diameter(self.network),
+            "average_shortest_path": calculate_average_shortest_path(self.network)
             }
         return results_dict
 
