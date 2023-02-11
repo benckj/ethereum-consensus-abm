@@ -2,6 +2,9 @@ from .base_utils import *
 from .gasper_consensus import *
 import numpy as np
 import logging
+from timebudget import timebudget
+timebudget.set_quiet()  # don't show measurements as they happen
+timebudget.report_at_exit()  # Generate report when the program exits
 
 
 class NodeState:
@@ -14,6 +17,7 @@ class NodeState:
         self.proposer_weight = None
         self.logging = logging.getLogger('Node State')
         self.latest_block = block
+        self.nodes_at = {}
 
     def get_block(self, block):
         replica = self.local_blockchain.copy()
@@ -27,13 +31,8 @@ class NodeState:
         block = received_block.copy()
         block.update_receiving(chainstate)
 
-        if (block.parent not in self.local_blockchain):
-            self.cached_blocks.add(block)
-            return
-
         if block not in self.local_blockchain:
             self.local_blockchain.add(block)
-            self.check_cached_blocks()
             self.check_cached_attestations()
 
         # add new_block to gossiping data
@@ -42,11 +41,12 @@ class NodeState:
         else:
             if "block" not in self.gossip_data[block.slot].keys() or self.gossip_data[block.slot]["block"] == None:
                 self.gossip_data[block.slot].update({"block": block})
-            
-        if block.slot == chainstate.slot: 
+
+        if block.slot == chainstate.slot:
             self.latest_block = block
         else:
-            max_key = max([k for k, v in self.gossip_data.items() if "block" in v.keys()])
+            max_key = max(
+                [k for k, v in self.gossip_data.items() if "block" in v.keys()])
             if max_key > 0:
                 self.latest_block = self.gossip_data[max_key]["block"]
 
@@ -70,15 +70,14 @@ class NodeState:
         if "attestations" not in self.gossip_data[attestation.slot].keys():
             self.gossip_data[attestation.slot].update({"attestations": set()})
 
+        # update the node's latest view
+        self.update_latest_attestations(attestation)
+        
         # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(attestation)
 
-    def check_cached_blocks(self):
-        for block in self.cached_blocks.copy():
-            if block.parent in self.local_blockchain:
-                self.cached_blocks.remove(
-                    block)
-                self.local_blockchain.add(block)
+    def update_latest_attestations(self, attestation):
+        self.nodes_at.update({attestation.attestor: attestation})
 
     def check_cached_attestations(self):
         for attestation in self.cached_attestations.copy():
@@ -123,6 +122,7 @@ class Node:
         self.gasper.lmd_ghost(chainstate, self.state)
         return self.gasper.get_head_block()
 
+    @timebudget
     def propose_block(self, chainstate: ChainState):
         head_slot, head_block = self.use_lmd_ghost(chainstate)
         if head_slot >= chainstate.slot:
@@ -147,11 +147,11 @@ class Node:
             return
         listening_node.listen_block(chainstate, self)
 
+    @timebudget
     def listen_block(self,  chainstate: ChainState, gossiping_node,):
         """
         Listening node tries to read all the blocks from the gossiping node and update local state.
         Below are the conditions it follows:
-        - listening block's slot should not be greater than current chain state slot
         - listening block's slot should not be lesser than node finalized head slot
         - listening node should have the first block listened in a particular slot.
         """
@@ -159,7 +159,7 @@ class Node:
         # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_bloc
 
         for listening_slot in gossiping_node.state.gossip_data.keys():
-            if chainstate.slot < listening_slot  or listening_slot < self.gasper.finalized_head_slot or ("block" not in gossiping_node.state.gossip_data[listening_slot].keys()):
+            if listening_slot < self.gasper.finalized_head_slot or ("block" not in gossiping_node.state.gossip_data[listening_slot].keys()):
                 continue
 
             listening_block = gossiping_node.state.gossip_data[listening_slot]["block"]
@@ -180,9 +180,7 @@ class Node:
                 return
             self.attest(chainstate)
 
-        self.gasper.lmd_ghost(chainstate, self.state)
-
-
+    @timebudget
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
@@ -211,6 +209,7 @@ class Node:
             return
         listening_node.listen_attestation(chainstate, self)
 
+    @timebudget
     def listen_attestation(self, chainstate, gossiping_node):
         """
         Listening node tries to read all the attestations from the gossiping node and update local state.
@@ -230,8 +229,6 @@ class Node:
                 for attestation in gossiping_node.state.gossip_data[
                         listening_slot]["attestations"]:
                     self.state.add_attestation(attestation)
-
-        self.gasper.lmd_ghost(chainstate, self.state)
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)

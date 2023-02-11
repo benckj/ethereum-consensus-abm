@@ -4,6 +4,9 @@ from .base_utils import *
 
 import numpy as np
 import logging
+from timebudget import timebudget
+timebudget.set_quiet()  # don't show measurements as they happen
+timebudget.report_at_exit()  # Generate report when the program exits
 '''
 FUNCTIONS
 '''
@@ -17,49 +20,21 @@ class Gasper:
     consensus_chain = {}
     headblock_weights = {}
     accounted_attestations = set()
-    nodes_at = {}
 
     def __init__(self, genesis_block, logging=logging):
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
         self.logging = logging.getLogger('ConsensusAlgo')
 
-    def get_latest_attestations(self, attestations):
-        if len(attestations) == 0:
-            return self.nodes_at
-
-        attestations_in_tuples = set()
-        for slot, node_attestations in sorted(attestations.items()):
-            if (max(attestations.keys()) >= slot >= (max(attestations.keys()) - 2 * FFG_FINALIZE_SLOTS)):
-                for node, block in node_attestations.items():
-                    attestations_in_tuples.update(
-                        [Attestation(node, block, slot)])
-
-        new_attestations = list(
-            attestations_in_tuples - self.accounted_attestations)
-        self.accounted_attestations = attestations_in_tuples
-        new_attestations.sort(key=lambda x: x.slot)
-        for attestation in new_attestations:
-            self.nodes_at.update({attestation.attestor: attestation})
-
-        latest_attestation = {}
-        for node, attestation in self.nodes_at.items():
-            if attestation.slot not in latest_attestation.keys():
-                latest_attestation.update({attestation.slot: {
-                    node: attestation.block}})
-            else:
-                latest_attestation[attestation.slot].update(
-                    {node: attestation.block})
-
-        return latest_attestation
 
     def prune_attestatations_byInclusionDelay(self, needed_slot, attestations):
         return {slot: node_attestations for slot,
                 node_attestations in attestations.items() if slot < needed_slot}
 
+    @timebudget
     def get_cummulative_weight_subTree(self, given_block, node_state, chainstate):
         total_weights = 0
 
-        for attestation in self.nodes_at.values():
+        for attestation in node_state.nodes_at.values():
             if given_block == attestation.block:
                 total_weights += 1
 
@@ -74,14 +49,14 @@ class Gasper:
 
         return total_weights
 
+    @timebudget
     def lmd_ghost(self, chainstate, node_state):
         # get the latest attestations out of all know attestations
-        fork_choice_attestations = self.get_latest_attestations(
-            self.prune_attestatations_byInclusionDelay(chainstate.slot, node_state.attestations))
+        fork_choice_attestations = self.prune_attestatations_byInclusionDelay(chainstate.slot, node_state.attestations)
 
         if len(fork_choice_attestations.keys()) == 0:
             return
-
+        
         previous_head = self.consensus_chain[self.finalized_head_slot]
 
         # clear the previously justified slots
@@ -94,9 +69,6 @@ class Gasper:
 
             if len(known_children) == 0:
                 heavyBlock = None
-
-            # elif len(known_children) ==1:
-            #     heavyBlock = known_children[0]
 
             else:
                 block_weights = {block: self.get_cummulative_weight_subTree(

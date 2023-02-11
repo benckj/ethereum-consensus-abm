@@ -156,19 +156,19 @@ class ChainState():
         self.malicious_slot = True
 
     def update_epoch(self, new_epoch):
-        if new_epoch < self.epoch:
-            self.logging.error(
-                'New epoch should be greater than current epoch')
+        # if new_epoch < self.epoch:
+        #     self.logging.error(
+        #         'New epoch should be greater than current epoch')
         self.epoch = new_epoch
 
     def update_slot(self, new_slot):
-        if new_slot < self.slot:
-            self.logging.error('New slot should be greater than current_slot')
+        # if new_slot < self.slot:
+        #     self.logging.error('New slot should be greater than current_slot')
         self.slot = new_slot
 
     def update_time(self, new_time):
-        if new_time < self.time:
-            self.logging.error('New time should be greater than current')
+        # if new_time < self.time:
+        #     self.logging.error('New time should be greater than current')
         self.time = new_time
 
     def update_gods_view(self, block=None, attestation=None):

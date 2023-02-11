@@ -42,7 +42,16 @@ def get_cummulative_weight_subTree(given_block, attestations):
     return total_weights, only_attestation_weights
 
 
-def draw_blockchain(all_known_blocks, attestations, head_block):
+def draw_blockchain(all_known_blocks, nodes_at, head_block):
+    attestations = {}
+    for node, attestation in nodes_at.items():
+        if attestation.slot not in attestations.keys():
+            attestations.update({attestation.slot: {
+                node: attestation.block}})
+        else:
+            attestations[attestation.slot].update(
+                {node: attestation.block})
+
     T = to_digraph(all_known_blocks)
     pos = graphviz_layout(T, prog="dot")
 
@@ -109,7 +118,7 @@ if __name__ == "__main__":
         proposer_vote_boost=0.7,
     )
 
-    model.run(390)
+    model.run(3e2)
     print('\n Gods View Results',model.results())
 
     end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 10, 0.7, model.genesis_block)
@@ -118,7 +127,7 @@ if __name__ == "__main__":
 
     print(model.results(rng_node))
 
-    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
+    draw_blockchain(list(model.chain_state.god_view_blocks),rng_node.state.nodes_at,
                         rng_node.gasper.get_head_block())
 
     rng_node2 = np.random.default_rng().choice(model.validators)
@@ -126,5 +135,5 @@ if __name__ == "__main__":
 
     print(model.results(rng_node2))
     
-    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),
+    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.state.nodes_at,
                         rng_node2.gasper.get_head_block())
