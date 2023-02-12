@@ -33,7 +33,7 @@ class NodeState:
 
         if block not in self.local_blockchain:
             self.local_blockchain.add(block)
-            self.check_cached_attestations()
+            self.check_cached_attestations(chainstate)
 
         # add new_block to gossiping data
         if block.slot not in self.gossip_data.keys():
@@ -50,19 +50,20 @@ class NodeState:
             if max_key > 0:
                 self.latest_block = self.gossip_data[max_key]["block"]
 
-    def add_attestation(self, attestation):
+    def add_attestation(self, chainstate, attestation):
         """
         Node's State attestations and gossip data attestation per slot are updated but only if the block is in the node's state or else the attestation is queued.
         """
-        if attestation.block not in self.local_blockchain:
+        if attestation.block not in self.local_blockchain or chainstate.slot <= attestation.slot:
             # Cache the attestation if the node does not know the block yet.
             self.cached_attestations.add(attestation)
-
         else:
             # add the attestations into the node's attestations
             if attestation.slot not in self.attestations.keys():
                 self.attestations[attestation.slot] = {}
             self.attestations[attestation.slot][attestation.attestor] = attestation.block
+            # update the node's latest view
+            self.update_latest_attestations(attestation)
 
         if attestation.slot not in self.gossip_data.keys():
             self.gossip_data[attestation.slot] = {"attestations": set()}
@@ -70,8 +71,6 @@ class NodeState:
         if "attestations" not in self.gossip_data[attestation.slot].keys():
             self.gossip_data[attestation.slot].update({"attestations": set()})
 
-        # update the node's latest view
-        self.update_latest_attestations(attestation)
         
         # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(attestation)
@@ -79,9 +78,9 @@ class NodeState:
     def update_latest_attestations(self, attestation):
         self.nodes_at.update({attestation.attestor: attestation})
 
-    def check_cached_attestations(self):
+    def check_cached_attestations(self,chainstate):
         for attestation in self.cached_attestations.copy():
-            if attestation.block in self.local_blockchain:
+            if attestation.block in self.local_blockchain and chainstate.slot > attestation.slot:
                 if attestation.slot in self.attestations.keys():
                     if not (attestation.attestor in self.attestations[attestation.slot].keys() and self.attestations[attestation.slot][attestation.attestor] == attestation.block):
                         self.attestations[attestation.slot][attestation.attestor] = attestation.block
@@ -90,7 +89,8 @@ class NodeState:
                     self.attestations[attestation.slot] = {}
                     self.attestations[attestation.slot][attestation.attestor] = attestation.block
 
-                # delete from cache
+                self.update_latest_attestations(attestation)
+                # delete from cache            
                 self.cached_attestations.remove(attestation)
 
 
@@ -196,7 +196,7 @@ class Node:
         self.logging.debug('Block attested {} in slot {} by {}'.format(
             attesting_block, attesting_slot, self))
 
-        self.state.add_attestation(attestation)
+        self.state.add_attestation(chainstate, attestation)
 
         chainstate.update_gods_view(attestation=attestation)
         # As a node must attest only once in a slot
@@ -228,7 +228,7 @@ class Node:
 
                 for attestation in gossiping_node.state.gossip_data[
                         listening_slot]["attestations"]:
-                    self.state.add_attestation(attestation)
+                    self.state.add_attestation(chainstate, attestation)
 
     def __repr__(self):
         return '<Node {}>'.format(self.id)

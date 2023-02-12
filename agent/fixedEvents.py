@@ -114,7 +114,7 @@ class SlotEvent(FixedTimeEvent):
 
             for validator_node in self.epoch_event.malicious_validators:
                 if not validator_node.is_attesting: 
-                    validator_node.state.add_attestation(attestation)
+                    validator_node.state.add_attestation(self.chainstate, attestation)
 
     def __repr__(self):
         return 'Slot Event {}'.format(self.counter)

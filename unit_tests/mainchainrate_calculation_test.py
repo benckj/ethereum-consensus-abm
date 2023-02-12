@@ -76,9 +76,10 @@ class MainChainRate_TestCases(unittest.TestCase):
             4: {mock_node: block_3, mock_node1: block_3, mock_node2: block_4, },
         }
 
+        chain_state.update_slot(5)
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                analyze_node.state.add_attestation(
+                analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         ###################

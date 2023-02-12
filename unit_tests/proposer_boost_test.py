@@ -35,7 +35,7 @@ class PB_Test(unittest.TestCase):
         chain_state.update_slot(2)
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
+                self.analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
@@ -64,7 +64,7 @@ class PB_Test(unittest.TestCase):
         chain_state.update_slot(2)
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
+                self.analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
@@ -86,13 +86,14 @@ class PB_Test(unittest.TestCase):
         attestations = {
             1: {self.nodes[i]: block1 for i in [0, 1, 2]}}
 
-        for slot, node_attestaions in attestations.items():
-            for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
-
         chain_state.update_time(14)
         chain_state.update_slot(2)
+
+        for slot, node_attestaions in attestations.items():
+            for node, block in node_attestaions.items():
+                self.analyze_node.state.add_attestation(chain_state,
+                    Attestation(node, block, slot))
+
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
@@ -101,8 +102,6 @@ class PB_Test(unittest.TestCase):
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1})
 
-        chain_state.update_time(14)
-        chain_state.update_slot(2)
         chain_state.set_malicious_slot()
         # Logic to see produce an empty slot in the malicious_slot
         block2 = Block('n+1', self.nodes[0], 2, block1, True)
@@ -110,7 +109,7 @@ class PB_Test(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
+                self.analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
@@ -120,15 +119,17 @@ class PB_Test(unittest.TestCase):
 
         chain_state.update_time(22)
         self.analyze_node.state.add_block( chain_state, block2)
+
+
+        chain_state.update_time(26)
+        chain_state.update_slot(3)
         attestations = {2: {self.nodes[i]: block2 for i in [5]}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
+                self.analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
-        chain_state.update_time(26)
-        chain_state.update_slot(3)
         block3 = Block('n+2', self.nodes[0], 3, block1)
 
         self.analyze_node.state.add_block( chain_state, block3)
@@ -137,7 +138,7 @@ class PB_Test(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
+                self.analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(

@@ -79,7 +79,7 @@ class BranchRatio_TestCases(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                analyze_node.state.add_attestation(
+                analyze_node.state.add_attestation(chain_state,
                     Attestation(node, block, slot))
 
         ###################

@@ -25,11 +25,6 @@ class Gasper:
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
         self.logging = logging.getLogger('ConsensusAlgo')
 
-
-    def prune_attestatations_byInclusionDelay(self, needed_slot, attestations):
-        return {slot: node_attestations for slot,
-                node_attestations in attestations.items() if slot < needed_slot}
-
     @timebudget
     def get_cummulative_weight_subTree(self, given_block, node_state, chainstate):
         total_weights = 0
@@ -51,14 +46,12 @@ class Gasper:
 
     @timebudget
     def lmd_ghost(self, chainstate, node_state):
-        # get the latest attestations out of all know attestations
-        fork_choice_attestations = self.prune_attestatations_byInclusionDelay(chainstate.slot, node_state.attestations)
-
-        if len(fork_choice_attestations.keys()) == 0:
+        node_state.check_cached_attestations(chainstate)
+        
+        if len(node_state.attestations.keys()) == 0:
             return
         
         previous_head = self.consensus_chain[self.finalized_head_slot]
-
         # clear the previously justified slots
         self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
         ) if slot <= self.finalized_head_slot}
