@@ -37,7 +37,7 @@ class Model:
 
         # Logging
         self.logging = logging
-        self.logging.basicConfig(level=logging.ERROR)
+        self.logging.basicConfig(level=logging.DEBUG)
         # Using a defined randomness for replication
         self.rng = np.random.default_rng(seed)
 
@@ -113,6 +113,8 @@ class Model:
 
             self.time += increment
             self.chain_state.update_time(self.time)
+        self.chain_state.update_time(self.time)
+        self.chain_state.update_slot(self.chain_state.slot+1)
 
     def results(self, analyse_node=None):
         """This functions returns a dictionary containing the
@@ -129,7 +131,10 @@ class Model:
             analyse_node = Node(self.genesis_block,
                                 len(self.network)+1, self.rng)
             analyse_node.state.local_blockchain = self.chain_state.god_view_blocks
-            analyse_node.state.attestations = self.chain_state.god_view_attestations
+            for slot, node_attestaions in self.chain_state.god_view_attestations.items():
+                for node, block in node_attestaions.items():
+                    analyse_node.state.add_attestation(self.chain_state,
+                Attestation(node, block, slot))
             analyse_node.gasper.lmd_ghost(self.chain_state, analyse_node.state)
 
         malicious_blocks = [

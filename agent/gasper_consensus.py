@@ -20,6 +20,7 @@ class Gasper:
     consensus_chain = {}
     headblock_weights = {}
     accounted_attestations = set()
+    cummulative_weight_subTree = {}
 
     def __init__(self, genesis_block, logging=logging):
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
@@ -27,6 +28,10 @@ class Gasper:
 
     @timebudget
     def get_cummulative_weight_subTree(self, given_block, node_state, chainstate):
+        # Memoizing the subtree weights
+        if given_block in self.cummulative_weight_subTree.keys():
+            return self.cummulative_weight_subTree[given_block]
+
         total_weights = 0
 
         for attestation in node_state.nodes_at.values():
@@ -42,15 +47,15 @@ class Gasper:
         if (chainstate.slot == given_block.slot or chainstate.slot == given_block.slot+1) and given_block in node_state.local_blockchain:
             total_weights += given_block.booster_weight * chainstate.slot_committee_weight
 
+        self.cummulative_weight_subTree[given_block] = total_weights
         return total_weights
 
     @timebudget
     def lmd_ghost(self, chainstate, node_state):
         node_state.check_cached_attestations(chainstate)
-        
-        if len(node_state.attestations.keys()) == 0:
-            return
-        
+        # reset the subtree weights
+        self.cummulative_weight_subTree = {}
+
         previous_head = self.consensus_chain[self.finalized_head_slot]
         # clear the previously justified slots
         self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
@@ -62,6 +67,9 @@ class Gasper:
 
             if len(known_children) == 0:
                 heavyBlock = None
+
+            elif len(known_children) == 1:
+                heavyBlock = known_children[0]
 
             else:
                 block_weights = {block: self.get_cummulative_weight_subTree(
@@ -88,6 +96,49 @@ class Gasper:
                         heavyBlock.slot, self.finalized_head_slot)
 
             previous_head = heavyBlock
+    
+    ## Benjamin Version of LMD GHOST
+    # @timebudget
+    # def lmd_ghost(self, chainstate, node_state):
+    #     node_state.check_cached_attestations(chainstate)
+    #     self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
+    #     ) if slot <= self.finalized_head_slot}
+    #     attest = {k: v.block for k, v in node_state.nodes_at.items()}
+    #     # lowest_attested_block_height = min(b.height for b in attest.values())
+    #     # blocks =
+    #     # {b for b in blockchain if b.height >= lowest_attested_block_height}
+    #     parent_blocks = {b.parent for b in node_state.local_blockchain}
+    #     leaves = node_state.local_blockchain - parent_blocks
+
+    #     chains = {b: b.predecessors for b in leaves}
+
+    #     inverse_attestations = {}
+    #     for n, b in attest.items():
+    #         inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
+
+    #     heads_of_chains = {}
+    #     for head_of_chain, chain in chains.items():
+    #         val = 0
+    #         for block in chain:
+    #             if block in inverse_attestations.keys():
+    #                 for node in inverse_attestations[block]:
+    #                     val += 1
+    #         heads_of_chains[head_of_chain] = val
+    #     max_lmd_val = max(heads_of_chains.values())
+    #     max_heads = [key for key, value
+    #                  in heads_of_chains.items() if value == max_lmd_val]
+    #     # introduce tiebreaker
+    #     # sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
+    #     # TODO: use the rng
+    #     np.random.shuffle(max_heads)
+    #     sorted_max_heads = max_heads
+    #     current_block_root = sorted_max_heads[0]
+    #     while(current_block_root):
+    #         if current_block_root.slot > self.finalized_head_slot:
+    #             self.consensus_chain[current_block_root.slot] = current_block_root
+    #             current_block_root = current_block_root.parent
+    #         else:
+    #             return
 
     def get_head_block(self):
         for slot, block in sorted(self.consensus_chain.items(), key=lambda item: item[0],  reverse=True):
@@ -124,7 +175,7 @@ class Gasper:
         xi : float
             Mainchain blocks ratio
         """
-        return len([block for slot, block in self.consensus_chain.items() if block]) / len(all_known_blocks)
+        return len([block for slot, block in self.consensus_chain.items()]) / len(all_known_blocks)
 
     def calculate_branch_ratio(self, all_known_blocks):
         """Compute the branch Ratio, which measures how often forks happen
@@ -139,7 +190,7 @@ class Gasper:
         """
 
         main_chain = set(
-            [block for slot, block in self.consensus_chain.items() if block])
+            [block for slot, block in self.consensus_chain.items()])
         orphan_chain = all_known_blocks - main_chain
 
         counter = 0

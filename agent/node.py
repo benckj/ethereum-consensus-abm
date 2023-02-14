@@ -178,7 +178,9 @@ class Node:
         if self.is_attesting == True and chainstate.slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[chainstate.slot] and self.state.gossip_data[chainstate.slot]["block"]:
             if chainstate.slot in self.state.attestations.keys() and self in self.state.attestations[chainstate.slot].keys():
                 return
-            self.attest(chainstate)
+            attestation = self.attest(chainstate)
+            self.logging.debug('{} Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(attestation,
+                                                                                                              self, self.gasper.consensus_chain, self.state.attestations))
 
     @timebudget
     def attest(self, chainstate: ChainState):
