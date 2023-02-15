@@ -1,5 +1,5 @@
 """
-	copyright 2022 uzh
+    copyright 2022 uzh
     This file is part of ethereum-consensus-abm.
 
     ethereum-consensus-abm is free software: you can redistribute it and/or modify
@@ -525,45 +525,65 @@ def find_leaves_of_blockchain(blockchain):
     return blockchain - parent_blocks
 
 
-def simple_attestation_evaluation(n):
+def stake_attestation_evaluation(node):
+    """Returns a peer stake.
+    """
     return 1
 
 
-def stake_attestation_evaluation(n):
-    pass
-
-
 def lmd_ghost(blockchain, attestations):
+    """Returns the current head of the chain following LMD-GHOST algorithm
+    from [0].
+
+    [0]: Buterin, Vitalik, et al. "Combining GHOST and casper."arXiv preprint arXiv:2003.03052 (2020)."""
+
+    # k:peer, v[0]: pointer to the attested block
     attest = {k: v[0] for k, v in attestations.items()}
-    # lowest_attested_block_height = min(b.height for b in attest.values())
-    # blocks =
-    # {b for b in blockchain if b.height >= lowest_attested_block_height}
+    # blocks with at least one children
     parent_blocks = {b.parent for b in blockchain}
-    leaves = blockchain - parent_blocks
-
-    chains = {b: b.predecessors for b in leaves}
-
+    # blocks with no children
+    # leaves = blockchain - parent_blocks
+    # for each leave, chain from the genesis to the leaf
+    # chains = {b: b.predecessors for b in leaves}
+    # key: block, item: list of nodes attesting to it
     inverse_attestations = {}
-    for n, b in attest.items():
-        inverse_attestations[b] = inverse_attestations.get(b, []) + [n]
+    for node, block in attest.items():
+        inverse_attestations[block] = inverse_attestations.get(block, []) + [node]
 
-    heads_of_chains = {}
-    for head_of_chain, chain in chains.items():
-        val = 0
-        for block in chain:
-            if block in inverse_attestations.keys():
-                for node in inverse_attestations[block]:
-                    val += 1
-        heads_of_chains[head_of_chain] = val
-    max_lmd_val = max(heads_of_chains.values())
-    max_heads = [key for key, value
-                 in heads_of_chains.items() if value == max_lmd_val]
-    # introduce tiebreaker
-    # sorted_max_heads = sorted(max_heads, key=lambda x: x.height, reverse=True)
-    # TODO: use the rng
-    np.random.shuffle(max_heads)
-    sorted_max_heads = max_heads
-    return sorted_max_heads[0]
+    # define lambda function to return stake weight of a list of peers
+    sum_stake = lambda node_list : sum([stake_attestation_evaluation(node) for node in node_list])
+    # evaluate leaves weight
+    leaves_weight = {block: sum_stake(item) for block, item in inverse_attestations.items()}
+    # assign weight to all blocks in the local blocktree
+    blocks_weight = leaves_weight.copy()
+    blocks_weight.update({block: 0 for block in parent_blocks})
+    for leaf, leaf_weight in leaves_weight.items():
+        for block in leaf.predecessors:
+            blocks_weight[block] += leaf_weight
+    # find lmd ghost head chain
+    # continue until leaf(from local peer pow)
+    # head_chain = blockchain.genesis  # TODO: use a method of Blockchain class
+    head_chain = [block for block in parent_blocks if block.parent is None].pop()
+    while len([child for child in head_chain.children if child in blockchain]) > 0:
+        local_children = [child for child in head_chain.children if child in blockchain]
+        # pop a random item from children set
+        list_head_chain = [local_children.pop()]
+        current_max = blocks_weight[list_head_chain[0]]
+        while len(local_children) > 0:
+            block = local_children.pop()
+            # compare children weights
+            if blocks_weight[block] > current_max:
+                list_head_chain = [block]
+                current_max = blocks_weight[block]
+            elif blocks_weight[block] == current_max:
+                list_head_chain.append(block)
+        # tie-breaks
+        sorted(list_head_chain, key=lambda x: x.__hash__())
+        # update new head chain
+        head_chain = list_head_chain[0]
+
+    return head_chain
+
 
 def blockchain_to_digraph(blockchain):
     leaves = find_leaves_of_blockchain(blockchain)
