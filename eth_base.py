@@ -540,7 +540,7 @@ def lmd_ghost(blockchain, attestations):
     # k:peer, v[0]: pointer to the attested block
     attest = {k: v[0] for k, v in attestations.items()}
     # blocks with at least one children
-    parent_blocks = {b.parent for b in blockchain}
+    parent_blocks = {b.parent for b in blockchain if b.parent is not None}
     # blocks with no children
     # leaves = blockchain - parent_blocks
     # for each leave, chain from the genesis to the leaf
@@ -555,15 +555,18 @@ def lmd_ghost(blockchain, attestations):
     # evaluate leaves weight
     leaves_weight = {block: sum_stake(item) for block, item in inverse_attestations.items()}
     # assign weight to all blocks in the local blocktree
-    blocks_weight = leaves_weight.copy()
-    blocks_weight.update({block: 0 for block in parent_blocks})
+    # all blocks have 0 by default
+    blocks_weight = {block: 0 for block in blockchain}
+    # attested leaves have anon-zero weight
+    blocks_weight.update(leaves_weight)
+    # diffuse the non-zero weight upward the blocktree branches
     for leaf, leaf_weight in leaves_weight.items():
         for block in leaf.predecessors:
             blocks_weight[block] += leaf_weight
     # find lmd ghost head chain
     # continue until leaf(from local peer pow)
     # head_chain = blockchain.genesis  # TODO: use a method of Blockchain class
-    head_chain = [block for block in parent_blocks if block.parent is None].pop()
+    head_chain = [block for block in blockchain if block.parent is None].pop()
     while len([child for child in head_chain.children if child in blockchain]) > 0:
         local_children = [child for child in head_chain.children if child in blockchain]
         # pop a random item from children set
@@ -578,7 +581,7 @@ def lmd_ghost(blockchain, attestations):
             elif blocks_weight[block] == current_max:
                 list_head_chain.append(block)
         # tie-breaks
-        sorted(list_head_chain, key=lambda x: x.__hash__())
+        sorted(list_head_chain, key=hash)
         # update new head chain
         head_chain = list_head_chain[0]
 

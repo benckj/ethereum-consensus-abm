@@ -21,7 +21,7 @@ def test_0():
     B9 = sample.Block(emitter="genesis", parent=B5, slot_no=9)
     B10 = sample.Block(emitter="genesis", parent=B8, slot_no=10)
 
-    blockchain = {B1, B2, B3, B4, B5, B6, B7, B8, B9, B10}
+    blockchain = {B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10}
 
     attestations = {'a': [B6],
 					'b': [B7],
@@ -48,7 +48,7 @@ def test_1():
     B9 = sample.Block(emitter="genesis", parent=B5, slot_no=9)
     B10 = sample.Block(emitter="genesis", parent=B8, slot_no=10)
 
-    blockchain = {B1, B2, B3, B4, B5, B6, B7, B8, B9, B10}
+    blockchain = {B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10}
 
     attestations = {'a': [B6],
 					'b': [B7],
@@ -62,3 +62,68 @@ def test_1():
         test.append(sample.lmd_ghost(blockchain, attestations))
     for l in range(10):
         assert(test[l] is test[0])
+
+
+def test_2():
+    "Test genesis only"
+    B0 = sample.Block(emitter="genesis", parent=None, slot_no=0)
+
+    blockchain = {B0}
+
+    attestations = {}
+
+    test = sample.lmd_ghost(blockchain, attestations)
+    assert(test is B0)
+
+
+def test_3():
+    "Test chain only"
+    B0 = sample.Block(emitter="genesis", parent=None, slot_no=0)
+    B1 = sample.Block(emitter="genesis", parent=B0, slot_no=1)
+
+    blockchain = {B0, B1}
+
+    attestations = {}
+
+    test = sample.lmd_ghost(blockchain, attestations)
+    assert(test is B1)
+
+
+def test_4():
+    "Test chain only"
+    B0 = sample.Block(emitter="genesis", parent=None, slot_no=0)
+    B1 = sample.Block(emitter="genesis", parent=B0, slot_no=1)
+
+    blockchain = {B0, B1}
+
+    attestations = {"a": [B1]}
+
+    test = sample.lmd_ghost(blockchain, attestations)
+    assert(test is B1)
+
+
+def test_5():
+    "Test chain only"
+    B0 = sample.Block(emitter="genesis", parent=None, slot_no=0)
+    B1 = sample.Block(emitter="genesis", parent=B0, slot_no=1)
+
+    blockchain = {B0, B1}
+
+    attestations = {"a": [B0]}
+
+    test = sample.lmd_ghost(blockchain, attestations)
+    assert(test is B1)
+
+
+def test_5():
+    "Test chain only"
+    B0 = sample.Block(emitter="genesis", parent=None, slot_no=0)
+
+    blockchain = {B0}
+
+    attestations = {"a": [B0]}
+
+    test = sample.lmd_ghost(blockchain, attestations)
+    assert(test is B0)
+
+
