@@ -6,5 +6,5 @@
 +malicious_stake 0 0.7 0.1
 +adversary_offset 2 12 1
 +proposer_vote_boost 0 0.9 0.1
-+tau_block 1 13 3
++tau_block 1 16 3
 +tau_attestation 10 170 40

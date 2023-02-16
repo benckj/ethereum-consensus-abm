@@ -14,22 +14,26 @@ class NodeState:
         self.gossip_data = {}  # {slot: {"block": block, "attestations": []}}
         self.cached_attestations = set()  # {tuple(slot,node,block)}
         self.cached_blocks = set()
-        self.proposer_weight = None
         self.logging = logging.getLogger('Node State')
-        self.latest_block = block
         self.nodes_at = {}
+        self.proposer_booster = None
 
-    def get_block(self, block):
-        replica = self.local_blockchain.copy()
-        replica.remove(block)
-        return (self.local_blockchain - replica).pop()
+    def update_receiving(self, chainstate, block):
+        """
+        Function is used to add booster_weight to the block recevied by a node, this is used in the `add_block` in the `NodeState` class. 
+        """
+        if chainstate.slot == block.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
+            self.proposer_booster = block
 
-    def add_block(self, chainstate: ChainState, received_block: Block):
+        if self.proposer_booster and chainstate.slot > self.proposer_booster.slot:
+            self.proposer_booster = None
+
+
+    def add_block(self, chainstate: ChainState, block: Block):
         """
         Node's State Block and gossip data block per slot are updated but only if the block is in the node's state or else the attestation is queued.
         """
-        block = received_block.copy()
-        block.update_receiving(chainstate)
+        self.update_receiving(chainstate,block)
 
         if block not in self.local_blockchain:
             self.local_blockchain.add(block)
@@ -41,14 +45,6 @@ class NodeState:
         else:
             if "block" not in self.gossip_data[block.slot].keys() or self.gossip_data[block.slot]["block"] == None:
                 self.gossip_data[block.slot].update({"block": block})
-
-        if block.slot == chainstate.slot:
-            self.latest_block = block
-        else:
-            max_key = max(
-                [k for k, v in self.gossip_data.items() if "block" in v.keys()])
-            if max_key > 0:
-                self.latest_block = self.gossip_data[max_key]["block"]
 
     def add_attestation(self, chainstate, attestation):
         """
@@ -224,7 +220,6 @@ class Node:
         # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_aggregate_and_proof
         for listening_slot in gossiping_node.state.gossip_data.keys():
             if listening_slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= chainstate.slot >= listening_slot and chainstate.slot // SLOTS_PER_EPOCH == listening_slot // SLOTS_PER_EPOCH:
-
                 if "attestations" not in gossiping_node.state.gossip_data[listening_slot].keys():
                     continue
 

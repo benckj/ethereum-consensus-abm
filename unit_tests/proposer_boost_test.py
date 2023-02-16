@@ -55,17 +55,9 @@ class PB_Test(unittest.TestCase):
 
         chain_state = ChainState(3, 1, 1, 6, 0.4, self.genesis_block)
         self.analyze_node.state.add_block( chain_state, block2)
+        self.assertEqual(self.analyze_node.state.proposer_booster, block2)
         chain_state.update_time(5)
-        self.analyze_node.state.add_block( chain_state, block1)
-
-        attestations = {1: {self.nodes[i]: block1 if i in range(
-            int(0.5 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
-
-        chain_state.update_slot(2)
-        for slot, node_attestaions in attestations.items():
-            for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(chain_state,
-                    Attestation(node, block, slot))
+        self.analyze_node.state.add_block(chain_state, block1)
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
@@ -76,7 +68,7 @@ class PB_Test(unittest.TestCase):
 
     def reorg_protection(self):
        # Slot 1: Initialized
-        chain_state = ChainState(3, 1, 1, 3, 0.7, self.genesis_block)
+        chain_state = ChainState(3, 1, 1, 3, 0.4, self.genesis_block)
         block1 = Block('n', self.nodes[0], 1, self.genesis_block)
 
         # Slot 1: Block Listened
@@ -133,24 +125,9 @@ class PB_Test(unittest.TestCase):
         block3 = Block('n+2', self.nodes[0], 3, block1)
 
         self.analyze_node.state.add_block( chain_state, block3)
-        attestations = {3: {self.nodes[i]: block3 if i in [
-            6] else block2 for i in [6, 7, 8]}}
-
-        for slot, node_attestaions in attestations.items():
-            for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(chain_state,
-                    Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state)
-        self.assertEqual(self.analyze_node.gasper.consensus_chain, {
-                         0: self.genesis_block, 1: block1, 2: block2})
-
-        chain_state.update_time(38)
-        chain_state.update_slot(4)
-
-        self.analyze_node.gasper.lmd_ghost(
-            chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1, 3: block3})
 

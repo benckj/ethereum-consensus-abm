@@ -39,13 +39,13 @@ class Gasper:
                 total_weights += 1
 
         if len(given_block.children) != 0:
-            for block in [node_state.get_block(block) if block in node_state.local_blockchain else block for block in given_block.children if chainstate.slot > block.slot]:
+            for block in [block if block in node_state.local_blockchain else block for block in given_block.children]:
                 total_weights += self.get_cummulative_weight_subTree(
                     block, node_state, chainstate)
 
         # using booster weight for the blocks which are in
-        if (chainstate.slot == given_block.slot or chainstate.slot == given_block.slot+1) and given_block in node_state.local_blockchain:
-            total_weights += given_block.booster_weight * chainstate.slot_committee_weight
+        if node_state.proposer_booster == given_block and chainstate.slot == node_state.proposer_booster.slot:
+            total_weights += chainstate.proposer_vote_boost * chainstate.slot_committee_weight
 
         self.cummulative_weight_subTree[given_block] = total_weights
         return total_weights
@@ -62,8 +62,8 @@ class Gasper:
         ) if slot <= self.finalized_head_slot}
 
         while (previous_head):
-            known_children = [node_state.get_block(
-                block) for block in previous_head.children if block in node_state.local_blockchain and chainstate.slot > block.slot]
+            known_children = [
+                block for block in previous_head.children if block in node_state.local_blockchain]
 
             if len(known_children) == 0:
                 heavyBlock = None
@@ -96,8 +96,8 @@ class Gasper:
                         heavyBlock.slot, self.finalized_head_slot)
 
             previous_head = heavyBlock
-    
-    ## Benjamin Version of LMD GHOST
+
+    # Benjamin Version of LMD GHOST
     # @timebudget
     # def lmd_ghost(self, chainstate, node_state):
     #     node_state.check_cached_attestations(chainstate)
@@ -141,28 +141,11 @@ class Gasper:
     #             return
 
     def get_head_block(self):
-        for slot, block in sorted(self.consensus_chain.items(), key=lambda item: item[0],  reverse=True):
-            if block:
-                return (slot, block)
+        return [(slot, block) for slot, block in self.consensus_chain.items() if slot == max(self.consensus_chain.keys())][0]
 
     def get_block2attest(self, chain_state, node_state):
         self.lmd_ghost(chain_state, node_state)
-        current_head_slot, current_head_block = self.get_head_block()
-        latest_block = node_state.latest_block
-
-        # Compare the block slot vs the head_slot
-        # If the head_slot is greater and this block is propose in the already consensus achieved slots.
-        # This block does not have enough attestations to reach consensus or this block was listened late in that particular slot.
-        # So, we return the previous head as the current head block again.
-        if current_head_slot >= latest_block.slot:
-            return chain_state.slot, current_head_block
-
-        # If the block produced is under the head of the canonical chain then return the block
-        if latest_block.parent == current_head_block:
-            return latest_block.slot, latest_block
-
-        # If the block is proposed in the later slots and does not have the latest computed
-        return chain_state.slot, current_head_block
+        return self.get_head_block()
 
     def calculate_mainchain_rate(self, all_known_blocks):
         """Compute the ratio of blocks in the mainchain over the total

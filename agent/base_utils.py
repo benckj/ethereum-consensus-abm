@@ -54,7 +54,6 @@ class Block:
         self.children = set()
         self.parent = parent
         self.value = value
-        self.booster_weight = 0
         self.slot = slot
         self.malicious = malicious
 
@@ -92,15 +91,6 @@ class Block:
         if not isinstance(self, Block):
             return None
         return hash((self.parent, self.value, self.slot, self.height, self.emitter))
-
-    def update_receiving(self, chainstate):
-        """
-        Function is used to add booster_weight to the block recevied by a node, this is used in the `add_block` in the `NodeState` class. 
-        """
-        if chainstate.slot == self.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
-            self.booster_weight = chainstate.proposer_vote_boost
-        else:
-            self.booster_weight = 0
 
     def copy(self):
         obj = type(self).__new__(self.__class__)

@@ -112,16 +112,14 @@ def run_simulation(parameters):
         proposer_vote_boost=parameters['proposer_vote_boost'],
     )
     model.run(parameters["simulation_time"])
-    return model.results()
+    return model.results(attack=True)
 
 
 command, options, args = parse_command_line()
 
 
 if __name__ == "__main__":
-
     for arg in args:
-
         runner = SingleRunner(arg, options.repeat)
         if options.filter is not None:
             runner.filter(options.filter)
