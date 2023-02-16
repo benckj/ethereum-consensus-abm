@@ -37,7 +37,7 @@ class Model:
 
         # Logging
         self.logging = logging
-        self.logging.basicConfig(level=logging.DEBUG)
+        self.logging.basicConfig(level=logging.ERROR)
         # Using a defined randomness for replication
         self.rng = np.random.default_rng(seed)
 

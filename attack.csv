@@ -1,4 +1,0 @@
-no_neighs,no_nodes,malicious_stake,adversary_offset,proposer_vote_boost,tau_block,tau_attestation,mainchain_rate,branch_ratio,blocktree_entropy,successful_reorgs,malicious_blocks_percent,failed_reorgs,attack_probability
-8,128,0.0,4,0.0,50.0,100.0,0.1111111111111111,5.0,0.9194093542036186,0,0.0,0,0.0
-8,128,0.0,4,0.0,50.0,100.0,0.2962962962962963,2.25,0.9257801931771857,0,0.0,0,0.0
-8,128,0.0,4,0.0,50.0,100.0,0.37037037037037035,1.7,0.99013315068082,0,0.0,0,0.0

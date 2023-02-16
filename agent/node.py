@@ -20,7 +20,7 @@ class NodeState:
 
     def update_receiving(self, chainstate, block):
         """
-        Function is used to add booster_weight to the block recevied by a node, this is used in the `add_block` in the `NodeState` class. 
+        Function is used to add block to a node proposer_booster eligibility, this is used in the `add_block` in the `NodeState` class. 
         """
         if chainstate.slot == block.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
             self.proposer_booster = block
@@ -184,9 +184,6 @@ class Node:
         """
         attesting_slot, attesting_block = self.gasper.get_block2attest(
             chainstate, self.state)
-
-        self.logging.debug('Block attested {} with weight {}'.format(
-            attesting_block, attesting_block.booster_weight))
 
         # Create the attestation for this slot
         attestation = Attestation(self, attesting_block, attesting_slot)
