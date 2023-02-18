@@ -25,9 +25,6 @@ class NodeState:
         if chainstate.slot == block.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
             self.proposer_booster = block
 
-        if self.proposer_booster and chainstate.slot > self.proposer_booster.slot:
-            self.proposer_booster = None
-
 
     def add_block(self, chainstate: ChainState, block: Block):
         """
@@ -67,7 +64,6 @@ class NodeState:
         if "attestations" not in self.gossip_data[attestation.slot].keys():
             self.gossip_data[attestation.slot].update({"attestations": set()})
 
-        
         # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(attestation)
 

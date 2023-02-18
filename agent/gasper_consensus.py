@@ -7,6 +7,7 @@ import logging
 from timebudget import timebudget
 timebudget.set_quiet()  # don't show measurements as they happen
 timebudget.report_at_exit()  # Generate report when the program exits
+
 '''
 FUNCTIONS
 '''
@@ -90,13 +91,12 @@ class Gasper:
             if heavyBlock:
                 self.consensus_chain[heavyBlock.slot] = heavyBlock
 
-                # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
-                if heavyBlock.slot % FFG_FINALIZE_SLOTS == 0:
-                    self.finalized_head_slot = max(
-                        heavyBlock.slot, self.finalized_head_slot)
-
             previous_head = heavyBlock
-
+        # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
+        if (chainstate.slot - 1) % SLOTS_PER_EPOCH == 0 and chainstate.slot > SLOTS_PER_EPOCH:
+            self.finalized_head_slot = max(
+                max(self.consensus_chain.keys()), self.finalized_head_slot)
+            
     # Benjamin Version of LMD GHOST
     # @timebudget
     # def lmd_ghost(self, chainstate, node_state):
@@ -167,18 +167,16 @@ class Gasper:
         -----------
         blockchain : A list of Block objects
         Returns:
-        --------
         F : float
             The branching ratio
         """
-
         main_chain = set(
             [block for slot, block in self.consensus_chain.items()])
-        orphan_chain = all_known_blocks - main_chain
+        orphan_blocks = all_known_blocks - main_chain
 
         counter = 0
         for block in main_chain:
-            for orphan in orphan_chain:
+            for orphan in orphan_blocks:
                 if block.parent == orphan.parent:
                     counter += 1
 

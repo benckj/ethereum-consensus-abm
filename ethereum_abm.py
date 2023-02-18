@@ -112,7 +112,7 @@ def run_simulation(parameters):
         proposer_vote_boost=parameters['proposer_vote_boost'],
     )
     model.run(parameters["simulation_time"])
-    return model.results(attack=True)
+    return model.results()
 
 
 command, options, args = parse_command_line()
