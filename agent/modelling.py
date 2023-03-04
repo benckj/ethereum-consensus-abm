@@ -5,6 +5,8 @@ import logging
 from .constants import *
 from .base_utils import *
 from .Gillespie import *
+
+
 from .fixedEvents import *
 from .randomProcess import *
 from .node import *
@@ -37,7 +39,7 @@ class Model:
 
         # Logging
         self.logging = logging
-        self.logging.basicConfig(level=logging.DEBUG)
+        self.logging.basicConfig(level=logging.ERROR)
         # Using a defined randomness for replication
         self.rng = np.random.default_rng(seed)
 
@@ -153,11 +155,12 @@ class Model:
             "branch_ratio": analyse_node.gasper.calculate_branch_ratio(self.chain_state.god_view_blocks),
             "blocktree_entropy": analyse_node.gasper.calculate_entropy(self.chain_state.god_view_blocks),
             "attack_probability": attackable_slot_count / (self.chain_state.slot-1),
+            "attackable_slots_count": attackable_slot_count,
             "successful_reorgs": reorg_count,
             "failed_reorgs": attackable_slot_count - reorg_count,
             "malicious_blocks_proposal_percent": malicious_blocks_count / len(self.chain_state.god_view_blocks),
             "malicious_blocks_finality_percent": malicious_blocks_final_count / len(self.chain_state.god_view_blocks),
-            "malicious_finality_probability": malicious_blocks_final_count / malicious_blocks_count,
+            "malicious_finality_probability": malicious_blocks_final_count / max(malicious_blocks_count,1),
             "delayed_block_influence": delayed_block_influence
         }
         return results_dict

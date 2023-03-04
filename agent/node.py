@@ -2,9 +2,6 @@ from .base_utils import *
 from .gasper_consensus import *
 import numpy as np
 import logging
-from timebudget import timebudget
-timebudget.set_quiet()  # don't show measurements as they happen
-timebudget.report_at_exit()  # Generate report when the program exits
 
 
 class NodeState:
@@ -114,7 +111,7 @@ class Node:
         self.gasper.lmd_ghost(chainstate, self.state)
         return self.gasper.get_head_block()
 
-    @timebudget
+    
     def propose_block(self, chainstate: ChainState):
         head_slot, head_block = self.use_lmd_ghost(chainstate)
         if head_slot >= chainstate.slot:
@@ -139,7 +136,7 @@ class Node:
             return
         listening_node.listen_block(chainstate, self)
 
-    @timebudget
+    
     def listen_block(self,  chainstate: ChainState, gossiping_node,):
         """
         Listening node tries to read all the blocks from the gossiping node and update local state.
@@ -174,7 +171,7 @@ class Node:
             self.logging.debug('{} Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(attestation,
                                                                                                               self, self.gasper.consensus_chain, self.state.attestations))
 
-    @timebudget
+    
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
@@ -200,7 +197,7 @@ class Node:
             return
         listening_node.listen_attestation(chainstate, self)
 
-    @timebudget
+    
     def listen_attestation(self, chainstate, gossiping_node):
         """
         Listening node tries to read all the attestations from the gossiping node and update local state.

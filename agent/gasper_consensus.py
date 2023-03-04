@@ -4,9 +4,6 @@ from .base_utils import *
 
 import numpy as np
 import logging
-from timebudget import timebudget
-timebudget.set_quiet()  # don't show measurements as they happen
-timebudget.report_at_exit()  # Generate report when the program exits
 
 '''
 FUNCTIONS
@@ -27,7 +24,7 @@ class Gasper:
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
         self.logging = logging.getLogger('ConsensusAlgo')
 
-    @timebudget
+    
     def get_cummulative_weight_subTree(self, given_block, node_state, chainstate):
         # Memoizing the subtree weights
         if given_block in self.cummulative_weight_subTree.keys():
@@ -51,7 +48,7 @@ class Gasper:
         self.cummulative_weight_subTree[given_block] = total_weights
         return total_weights
 
-    @timebudget
+    
     def lmd_ghost(self, chainstate, node_state):
         node_state.check_cached_attestations(chainstate)
         # reset the subtree weights
@@ -98,7 +95,7 @@ class Gasper:
                 max(self.consensus_chain.keys()), self.finalized_head_slot)
             
     # Benjamin Version of LMD GHOST
-    # @timebudget
+    # 
     # def lmd_ghost(self, chainstate, node_state):
     #     node_state.check_cached_attestations(chainstate)
     #     self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(

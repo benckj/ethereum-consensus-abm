@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # As mentioned in the Stochatic Modelling paper,
     # the number of neighbors fixed but have to experiment multiple topologies
     net_p2p = nx.barabasi_albert_graph(
-        128, 8)
+        128, 4)
     lcc_set = max(nx.connected_components(net_p2p), key=len)
     net_p2p = net_p2p.subgraph(lcc_set).copy()
     net_p2p = nx.convert_node_labels_to_integers(
@@ -111,14 +111,14 @@ if __name__ == "__main__":
 
     model = Model(
         graph=net_p2p,
-        tau_block=7,
-        tau_attest=14,
+        tau_block=10,
+        tau_attest=10,
         malicious_percent=0.25,
         adversary_offset=11,
         proposer_vote_boost=0,
     )
 
-    model.run(3e2)
+    model.run(400)
 
     end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, 0, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
