@@ -9,3 +9,6 @@ malicious_blocks_proposal_percent: help = malicious block proposed percent
 malicious_blocks_finality_percent: help = malicious block in final chain percent
 malicious_finality_probability: help = malicious finality probability
 delayed_block_influence: help = delayed block influence
+total_malicious_blocks_final: help = total_malicious_blocks_final
+total_final_blocks:help = total_final_blocks
+total_blocks:help = total_blocks

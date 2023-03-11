@@ -158,9 +158,13 @@ class Model:
             "attackable_slots_count": attackable_slot_count,
             "successful_reorgs": reorg_count,
             "failed_reorgs": attackable_slot_count - reorg_count,
+            "total_blocks": len(self.chain_state.god_view_blocks),
+            "total_final_blocks": len(analyse_node.gasper.consensus_chain.items()),
+            "total_malicious_blocks_final": malicious_blocks_final_count,
             "malicious_blocks_proposal_percent": malicious_blocks_count / len(self.chain_state.god_view_blocks),
-            "malicious_blocks_finality_percent": malicious_blocks_final_count / len(self.chain_state.god_view_blocks),
-            "malicious_finality_probability": malicious_blocks_final_count / max(malicious_blocks_count,1),
+            "malicious_blocks_finality_percent": malicious_blocks_final_count / len(analyse_node.gasper.consensus_chain.items()),
+            "malicious_finality_probability": malicious_blocks_final_count / max(malicious_blocks_count, 1),
             "delayed_block_influence": delayed_block_influence
         }
+        
         return results_dict
