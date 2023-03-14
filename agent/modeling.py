@@ -8,7 +8,7 @@ from .Gillespie import *
 
 
 from .fixedEvents import *
-from .randomProcess import *
+from .random_process import *
 from .node import *
 
 
@@ -166,5 +166,5 @@ class Model:
             "malicious_finality_probability": malicious_blocks_final_count / max(malicious_blocks_count, 1),
             "delayed_block_influence": delayed_block_influence
         }
-        
+
         return results_dict

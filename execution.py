@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from agent.modelling import Model
+from agent.modeling import Model
 from networkx.drawing.nx_pydot import graphviz_layout
 
 from agent.base_utils import *
