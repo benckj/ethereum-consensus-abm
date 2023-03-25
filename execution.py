@@ -115,7 +115,7 @@ if __name__ == "__main__":
         tau_attest=10,
         malicious_percent=0.25,
         adversary_offset=11,
-        proposer_vote_boost=0,
+        proposer_vote_boost=0.6,
     )
 
     model.run(400)

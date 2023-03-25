@@ -22,12 +22,11 @@ class NodeState:
         if chainstate.slot == block.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
             self.proposer_booster = block
 
-
     def add_block(self, chainstate: ChainState, block: Block):
         """
         Node's State Block and gossip data block per slot are updated but only if the block is in the node's state or else the attestation is queued.
         """
-        self.update_receiving(chainstate,block)
+        self.update_receiving(chainstate, block)
 
         if block not in self.local_blockchain:
             self.local_blockchain.add(block)
@@ -67,7 +66,7 @@ class NodeState:
     def update_latest_attestations(self, attestation):
         self.nodes_at.update({attestation.attestor: attestation})
 
-    def check_cached_attestations(self,chainstate):
+    def check_cached_attestations(self, chainstate):
         for attestation in self.cached_attestations.copy():
             if attestation.block in self.local_blockchain and chainstate.slot > attestation.slot:
                 if attestation.slot in self.attestations.keys():
@@ -79,7 +78,7 @@ class NodeState:
                     self.attestations[attestation.slot][attestation.attestor] = attestation.block
 
                 self.update_latest_attestations(attestation)
-                # delete from cache            
+                # delete from cache
                 self.cached_attestations.remove(attestation)
 
 
@@ -111,7 +110,6 @@ class Node:
         self.gasper.lmd_ghost(chainstate, self.state)
         return self.gasper.get_head_block()
 
-    
     def propose_block(self, chainstate: ChainState):
         head_slot, head_block = self.use_lmd_ghost(chainstate)
         if head_slot >= chainstate.slot:
@@ -136,7 +134,6 @@ class Node:
             return
         listening_node.listen_block(chainstate, self)
 
-    
     def listen_block(self,  chainstate: ChainState, gossiping_node,):
         """
         Listening node tries to read all the blocks from the gossiping node and update local state.
@@ -169,9 +166,8 @@ class Node:
                 return
             attestation = self.attest(chainstate)
             self.logging.debug('{} Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(attestation,
-                                                                                                              self, self.gasper.consensus_chain, self.state.attestations))
+                                                                                                          self, self.gasper.consensus_chain, self.state.attestations))
 
-    
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
@@ -197,7 +193,6 @@ class Node:
             return
         listening_node.listen_attestation(chainstate, self)
 
-    
     def listen_attestation(self, chainstate, gossiping_node):
         """
         Listening node tries to read all the attestations from the gossiping node and update local state.

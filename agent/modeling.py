@@ -100,7 +100,6 @@ class Model:
         self.god_view_blocks = set()
 
     def run(self, stoping_time):
-
         while self.time < stoping_time:
             # generate next random increment time and save it in self.increment
             increment = self.gillespie.calculate_time_increment()
@@ -145,7 +144,7 @@ class Model:
                                        block for block in self.chain_state.god_view_blocks if block.slot == slot+1 and block.parent.slot != slot]])
 
         reorg_count = len([1 for slot in self.chain_state.reorgs if (
-            slot+1) not in analyse_node.gasper.consensus_chain.keys()])
+            slot+1) not in analyse_node.gasper.consensus_chain.keys() and slot in analyse_node.gasper.consensus_chain.keys()])
 
         attackable_slot_count = len(
             [1 for slot in self.chain_state.reorgs])
