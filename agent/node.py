@@ -9,76 +9,133 @@ class NodeState:
         self.local_blockchain = set([block])
         self.attestations = {}  # {slot: {node: block}}
         self.gossip_data = {}  # {slot: {"block": block, "attestations": []}}
-        self.cached_attestations = set()  # {tuple(slot,node,block)}
+        self.cached_attestations = set()  # set of Attestation Object(slot,node,block)
         self.cached_blocks = set()
         self.logging = logging.getLogger('Node State')
-        self.nodes_at = {}
+        self.nodes_at = {}      # {node: block}
         self.proposer_booster = None
 
-    def update_receiving(self, chainstate, block):
+    def update_receiving(self, chainstate: ChainState, block: Block):
         """
-        Function is used to add block to a node proposer_booster eligibility, this is used in the `add_block` in the `NodeState` class. 
+        Function is used to update node's proposer_booster block with he eligibility criterias:
+            - Block has to be received in the current slot of the Network
+            - Block has to be received before 1st interval of the `SECONDS_PER_SLOT`
+         This is used in the `add_block` in the `NodeState` class. 
+
+        Parameters
+        ----------
+        chainstate: ChainState object: 
+            This the network state object passed on globally.
+        block: Block object: 
+            This is the Block to be used to update the proposer boost.
         """
-        if chainstate.slot == block.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
+
+        if chainstate.slot == block.slot and (chainstate.time % SECONDS_PER_SLOT) < (SECONDS_PER_SLOT // INTERVALS_PER_SLOT):
             self.proposer_booster = block
 
     def add_block(self, chainstate: ChainState, block: Block):
         """
-        Node's State Block and gossip data block per slot are updated but only if the block is in the node's state or else the attestation is queued.
-        """
-        self.update_receiving(chainstate, block)
+        Function adds a Block into Node States and Gossiping Data. 
+        Criteria for updating node state:
+            - Block should not already known by the Node. 
+        Function also updates the cached attestations upon receiving the new block
 
-        if block not in self.local_blockchain:
-            self.local_blockchain.add(block)
-            self.check_cached_attestations(chainstate)
+
+        Parameters
+        ----------
+        chainstate: ChainState object: 
+            This the network state object passed on globally.
+        block: Block object: 
+            block used to update the node's state..
+        """
+
+        if block in self.local_blockchain:
+            return
+
+        self.update_receiving(chainstate, block)
+        self.local_blockchain.add(block)
+        self.check_cached_attestations(chainstate)
 
         # add new_block to gossiping data
         if block.slot not in self.gossip_data.keys():
             self.gossip_data[block.slot] = {"block": block}
-        else:
-            if "block" not in self.gossip_data[block.slot].keys() or self.gossip_data[block.slot]["block"] == None:
-                self.gossip_data[block.slot].update({"block": block})
+            return
 
-    def add_attestation(self, chainstate, attestation):
-        """
-        Node's State attestations and gossip data attestation per slot are updated but only if the block is in the node's state or else the attestation is queued.
-        """
-        if attestation.block not in self.local_blockchain or chainstate.slot <= attestation.slot:
-            # Cache the attestation if the node does not know the block yet.
-            self.cached_attestations.add(attestation)
-        else:
-            # add the attestations into the node's attestations
-            if attestation.slot not in self.attestations.keys():
-                self.attestations[attestation.slot] = {}
-            self.attestations[attestation.slot][attestation.attestor] = attestation.block
-            # update the node's latest view
-            self.update_latest_attestations(attestation)
+        if "block" not in self.gossip_data[block.slot].keys():
+            self.gossip_data[block.slot].update({"block": block})
+            return
 
+    def add_attestation(self, chainstate: ChainState,  attestation: Attestation):
+        """
+        Function adds an Attestation into Node State and Gossiping Data. 
+        Function also queues the attestation, If:
+         - The block is not known 
+         (OR)
+         - The attestation is of current slot.
+
+
+        Parameters
+        ----------
+        chainstate: ChainState object: 
+            This the network state object passed on globally.
+        Attestation: Attestation object: 
+            attestation used to update the node's state.
+        """
+
+        if (attestation.slot in self.attestations.keys()
+            and attestation.attestor in self.attestations[attestation.slot].keys()
+                and self.attestations[attestation.slot][attestation.attestor] == attestation.block):
+            return
+
+        # add attestation into gossiping data
         if attestation.slot not in self.gossip_data.keys():
             self.gossip_data[attestation.slot] = {"attestations": set()}
 
         if "attestations" not in self.gossip_data[attestation.slot].keys():
             self.gossip_data[attestation.slot].update({"attestations": set()})
 
-        # Copy the attestation to gossip
         self.gossip_data[attestation.slot]["attestations"].add(attestation)
 
-    def update_latest_attestations(self, attestation):
-        self.nodes_at.update({attestation.attestor: attestation})
+        # Cache the attestation.
+        if attestation.block not in self.local_blockchain or attestation.slot == chainstate.slot:
+            self.cached_attestations.add(attestation)
+            return
+
+        # Add the attestation to node state.
+        if attestation.slot not in self.attestations.keys():
+            self.attestations[attestation.slot] = {}
+
+        self.attestations[attestation.slot][attestation.attestor] = attestation.block
+        self.update_nodesAt_byLatestAttestation(attestation)
+
+    def update_nodesAt_byLatestAttestation(self, latest_attestation):
+        """
+        Function updates node state with the latest attestation of a node.
+        """
+        if latest_attestation.attestor in self.nodes_at.keys():
+            current_block_at = self.nodes_at[latest_attestation.attestor]
+
+            if latest_attestation.slot > current_block_at.slot:
+                self.nodes_at.update(
+                    {latest_attestation.attestor: latest_attestation})
+            return
+        self.nodes_at[latest_attestation.attestor] = latest_attestation
 
     def check_cached_attestations(self, chainstate):
+        """
+        Function includes node state cached attestations into attestations if criteria passes:
+         - Block is known by the node and attestation slot is atleast one slot older than current slot of the network
+        """
         for attestation in self.cached_attestations.copy():
             if attestation.block in self.local_blockchain and chainstate.slot > attestation.slot:
-                if attestation.slot in self.attestations.keys():
-                    if not (attestation.attestor in self.attestations[attestation.slot].keys() and self.attestations[attestation.slot][attestation.attestor] == attestation.block):
-                        self.attestations[attestation.slot][attestation.attestor] = attestation.block
-                        # if the attestor's attestation already reached the attestations then just delete the cached attestation
-                else:
-                    self.attestations[attestation.slot] = {}
-                    self.attestations[attestation.slot][attestation.attestor] = attestation.block
 
-                self.update_latest_attestations(attestation)
-                # delete from cache
+                if attestation.slot not in self.attestations.keys():
+                    self.attestations[attestation.slot] = {}
+
+                if attestation.attestor not in self.attestations[attestation.slot].keys():
+                    self.attestations[attestation.slot][attestation.attestor] = attestation.block
+                    self.update_nodesAt_byLatestAttestation(attestation)
+
                 self.cached_attestations.remove(attestation)
 
 
@@ -113,12 +170,13 @@ class Node:
     def propose_block(self, chainstate: ChainState):
         head_slot, head_block = self.use_lmd_ghost(chainstate)
         if head_slot >= chainstate.slot:
-            raise "Syncing Issue"
+            raise "Setup Issue"
 
         # check if the slot is colliding
         new_block = Block('E{}_S{}'.format(
             chainstate.epoch, chainstate.slot), emitter=self, slot=chainstate.slot,
             parent=head_block, malicious=self.malicious)
+
         self.logging.debug('Block proposed {} in slot {} by {}, with head as {}'.format(
             new_block, chainstate.slot, self, head_block))
 
@@ -150,20 +208,24 @@ class Node:
 
             listening_block = gossiping_node.state.gossip_data[listening_slot]["block"]
 
-            # As node can listen only one proposed block in a particular slot
-            if listening_slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[listening_slot].keys():
-                if self.state.gossip_data[listening_slot]["block"] != listening_block or self.state.gossip_data[listening_slot]["block"] != None:
-                    continue
+            # Not neccessary
+            # # As node can listen only one proposed block in a particular slot
+            # if listening_slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[listening_slot].keys():
+            #     if self.state.gossip_data[listening_slot]["block"] != listening_block or self.state.gossip_data[listening_slot]["block"] != None:
+            #         continue
 
             if listening_block not in self.state.local_blockchain:
                 # Add to local of the node
-                self.state.add_block(
-                    chainstate, listening_block)
+                self.state.add_block(chainstate, listening_block)
 
-        # Attest if the node is in committee
-        if self.is_attesting == True and chainstate.slot in self.state.gossip_data.keys() and "block" in self.state.gossip_data[chainstate.slot] and self.state.gossip_data[chainstate.slot]["block"]:
-            if chainstate.slot in self.state.attestations.keys() and self in self.state.attestations[chainstate.slot].keys():
-                return
+        # Attest if the node is in committee and received a block for this slot
+        if (self.is_attesting == True and chainstate.slot in self.state.gossip_data.keys()
+            and "block" in self.state.gossip_data[chainstate.slot].keys()
+                and self.state.gossip_data[chainstate.slot]["block"]):
+
+            # Not neccesary as this should not happen twice as is_attesting is set to false if node already attests
+            # if chainstate.slot in self.state.attestations.keys() and self in self.state.attestations[chainstate.slot].keys():
+            #     return
             attestation = self.attest(chainstate)
             self.logging.debug('{} Attestor Node {}: Consensus View {} Consensus Attestations: {}'.format(attestation,
                                                                                                           self, self.gasper.consensus_chain, self.state.attestations))
@@ -171,14 +233,14 @@ class Node:
     def attest(self, chainstate: ChainState):
         """Create the Attestation for the current head of the chain block.
         """
-        attesting_slot, attesting_block = self.gasper.get_block2attest(
+        _, attesting_block = self.gasper.get_block2attest(
             chainstate, self.state)
 
         # Create the attestation for this slot
-        attestation = Attestation(self, attesting_block, attesting_slot)
+        attestation = Attestation(self, attesting_block, chainstate.slot)
 
         self.logging.debug('Block attested {} in slot {} by {}'.format(
-            attesting_block, attesting_slot, self))
+            attesting_block, chainstate.slot, self))
 
         self.state.add_attestation(chainstate, attestation)
 
@@ -204,7 +266,8 @@ class Node:
         # as read in the gossiping attestation rules, A Node should not accept an attestation until ATTESTATION_PROPAGATION_SLOT_RANGE of slots
         # now its parent block of that listened block https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#beacon_aggregate_and_proof
         for listening_slot in gossiping_node.state.gossip_data.keys():
-            if listening_slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= chainstate.slot >= listening_slot and chainstate.slot // SLOTS_PER_EPOCH == listening_slot // SLOTS_PER_EPOCH:
+            if (listening_slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= chainstate.slot >= listening_slot
+                    and chainstate.slot // SLOTS_PER_EPOCH == listening_slot // SLOTS_PER_EPOCH):
                 if "attestations" not in gossiping_node.state.gossip_data[listening_slot].keys():
                     continue
 

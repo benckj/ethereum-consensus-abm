@@ -117,6 +117,7 @@ class PB_Test(unittest.TestCase):
                          0: self.genesis_block, 1: block1})
 
         chain_state.set_malicious_slot()
+
         # Logic to see produce an empty slot in the malicious_slot
         block2 = Block('n+1', self.nodes[0], 2, block1, True)
         attestations = {2: {self.nodes[i]: block1 for i in [3, 4, ]}}
@@ -147,15 +148,6 @@ class PB_Test(unittest.TestCase):
 
         block3 = Block('n+2', self.nodes[0], 3, block1)
         self.analyze_node.state.add_block(chain_state, block3)
-
-        # chain_state.update_time(38)
-        # chain_state.update_slot(4)
-        # attestations = {3: {self.nodes[i]: block3 for i in [6,7]}}
-
-        # for slot, node_attestaions in attestations.items():
-        #     for node, block in node_attestaions.items():
-        #         self.analyze_node.state.add_attestation(chain_state,
-        #                                                 Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state)

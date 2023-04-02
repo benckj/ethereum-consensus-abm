@@ -24,8 +24,7 @@ class Gasper:
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
         self.logging = logging.getLogger('ConsensusAlgo')
 
-    
-    def get_cummulative_weight_subTree(self, given_block, node_state, chainstate):
+    def get_cummulative_weight_subTree(self, given_block, node_state, chainstate: ChainState):
         # Memoizing the subtree weights
         if given_block in self.cummulative_weight_subTree.keys():
             return self.cummulative_weight_subTree[given_block]
@@ -48,13 +47,14 @@ class Gasper:
         self.cummulative_weight_subTree[given_block] = total_weights
         return total_weights
 
-    
-    def lmd_ghost(self, chainstate, node_state):
+    def lmd_ghost(self, chainstate: ChainState, node_state):
+        # check the cached attestations and update the nodes_at
         node_state.check_cached_attestations(chainstate)
+
         # reset the subtree weights
         self.cummulative_weight_subTree = {}
-
         previous_head = self.consensus_chain[self.finalized_head_slot]
+
         # clear the previously justified slots
         self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
         ) if slot <= self.finalized_head_slot}
@@ -93,9 +93,16 @@ class Gasper:
         if (chainstate.slot - 1) % SLOTS_PER_EPOCH == 0 and chainstate.slot > SLOTS_PER_EPOCH:
             self.finalized_head_slot = max(
                 max(self.consensus_chain.keys()), self.finalized_head_slot)
-            
+
+    def get_head_block(self):
+        return [(slot, block) for slot, block in self.consensus_chain.items() if slot == max(self.consensus_chain.keys())][0]
+
+    def get_block2attest(self, chain_state: ChainState, node_state):
+        self.lmd_ghost(chain_state, node_state)
+        return self.get_head_block()
+
     # Benjamin Version of LMD GHOST
-    # 
+    #
     # def lmd_ghost(self, chainstate, node_state):
     #     node_state.check_cached_attestations(chainstate)
     #     self.consensus_chain = {slot: block for slot, block in self.consensus_chain.items(
@@ -136,13 +143,6 @@ class Gasper:
     #             current_block_root = current_block_root.parent
     #         else:
     #             return
-
-    def get_head_block(self):
-        return [(slot, block) for slot, block in self.consensus_chain.items() if slot == max(self.consensus_chain.keys())][0]
-
-    def get_block2attest(self, chain_state, node_state):
-        self.lmd_ghost(chain_state, node_state)
-        return self.get_head_block()
 
     def calculate_mainchain_rate(self, all_known_blocks):
         """Compute the ratio of blocks in the mainchain over the total

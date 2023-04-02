@@ -39,7 +39,8 @@ class Model:
 
         # Logging
         self.logging = logging
-        self.logging.basicConfig(level=logging.ERROR)
+        self.logging.basicConfig(level=logging.DEBUG)
+
         # Using a defined randomness for replication
         self.rng = np.random.default_rng(seed)
 
@@ -50,7 +51,6 @@ class Model:
             self.network) - no_of_malicious_nodes
 
         self.genesis_block = Block('0', 'genesis', 0)
-        self.malicious_shared_state = NodeState(self.genesis_block)
 
         honest_nodes = [Node(self.genesis_block, i, self.rng)
                         for i in range(no_of_honest_nodes)]
@@ -72,9 +72,10 @@ class Model:
             0, 0, 0, 0, self.proposer_vote_boost, self.genesis_block, self.logging)
 
         self.block_gossip_process = BlockGossipProcess(
-            tau=self.tau_block, edges=self.edges, chainstate=self.chain_state)
+            tau=self.tau_block, edges=self.edges, chainstate=self.chain_state, rng=self.rng)
+
         self.attestation_gossip_process = AttestationGossipProcess(
-            tau=self.tau_attest, edges=self.edges, chainstate=self.chain_state)
+            tau=self.tau_attest, edges=self.edges, chainstate=self.chain_state, rng=self.rng)
 
         self.epoch_event = EpochEvent(
             SLOTS_PER_EPOCH*SECONDS_PER_SLOT, self.validators, self.chain_state, rng=self.rng, logging=self.logging)
@@ -114,6 +115,7 @@ class Model:
 
             self.time += increment
             self.chain_state.update_time(self.time)
+
         self.chain_state.update_time(self.time)
         self.chain_state.update_slot(self.chain_state.slot+1)
 
@@ -138,16 +140,23 @@ class Model:
             block for block in self.chain_state.god_view_blocks if block.malicious])
 
         malicious_blocks_final_count = len(
-            [block for slot, block in analyse_node.gasper.consensus_chain.items() if block.malicious])
+            [block for _, block in analyse_node.gasper.consensus_chain.items() if block.malicious])
 
         delayed_block_influence = len([1 for slot in self.chain_state.reorgs if [
                                        block for block in self.chain_state.god_view_blocks if block.slot == slot+1 and block.parent.slot != slot]])
 
-        reorg_count = len([1 for slot in self.chain_state.reorgs if (
-            slot+1) not in analyse_node.gasper.consensus_chain.keys() and slot in analyse_node.gasper.consensus_chain.keys()])
+        reorg_count = len([1 for slot in self.chain_state.reorgs if (slot+2) in analyse_node.gasper.consensus_chain.keys()
+                           and slot in analyse_node.gasper.consensus_chain.keys()
+                           and analyse_node.gasper.consensus_chain[slot+2].parent == analyse_node.gasper.consensus_chain[slot]
+                           and (slot+1) not in analyse_node.gasper.consensus_chain.keys()])
 
-        attackable_slot_count = len(
-            [1 for slot in self.chain_state.reorgs])
+        protected_reorgs = len([1 for slot in self.chain_state.reorgs
+                                if (slot+1) in analyse_node.gasper.consensus_chain.keys()
+                                and (slot-1) in analyse_node.gasper.consensus_chain.keys()
+                                and analyse_node.gasper.consensus_chain[slot+1].parent == analyse_node.gasper.consensus_chain[slot-1]
+                                and slot not in analyse_node.gasper.consensus_chain.keys()])
+
+        attackable_slot_count = len(self.chain_state.reorgs)
 
         results_dict = {
             "mainchain_rate": analyse_node.gasper.calculate_mainchain_rate(self.chain_state.god_view_blocks),
@@ -156,6 +165,7 @@ class Model:
             "attack_probability": attackable_slot_count / (self.chain_state.slot-1),
             "attackable_slots_count": attackable_slot_count,
             "successful_reorgs": reorg_count,
+            "protected_reorgs": protected_reorgs,
             "failed_reorgs": attackable_slot_count - reorg_count,
             "total_blocks": len(self.chain_state.god_view_blocks),
             "total_final_blocks": len(analyse_node.gasper.consensus_chain.items()),

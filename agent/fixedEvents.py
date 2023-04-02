@@ -1,4 +1,5 @@
 from .constants import *
+from .base_utils import *
 import logging
 
 
@@ -30,7 +31,7 @@ class FixedTimeEvent():
 
 
 class EpochEvent(FixedTimeEvent):
-    def __init__(self, interval, validators, chainstate, rng=None, logging=logging):
+    def __init__(self, interval, validators, chainstate: ChainState, rng=None, logging=logging):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.committees = []
@@ -44,6 +45,7 @@ class EpochEvent(FixedTimeEvent):
 
     def event(self):
         self.chainstate.update_epoch(self.counter)
+
         j = list(range(SLOTS_PER_EPOCH))
         self.rng.shuffle(j)
         self.rng.shuffle(self.validators)
@@ -67,7 +69,7 @@ class EpochEvent(FixedTimeEvent):
 
 
 class SlotEvent(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_event, chainstate, rng=None, logging=logging):
+    def __init__(self, interval, validators, epoch_event: EpochEvent, chainstate: ChainState, rng=None, logging=logging):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.epoch_event = epoch_event
@@ -75,17 +77,14 @@ class SlotEvent(FixedTimeEvent):
         self.chainstate = chainstate
 
     def event(self):
-        self.chainstate.reset_malicious_slot()
-        self.logging.debug('proposing block for slot: {}'.format(self.counter))
-        proposer = self.epoch_event.proposers[self.counter %
-                                              SLOTS_PER_EPOCH]
-
         # Update chainstate parameters
+        self.chainstate.reset_malicious_slot()
         self.chainstate.update_slot(self.counter)
         self.chainstate.update_slot_committee_weight(
             len(self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]))
 
-        # turn off the attesting power of the node if they have exercised the attesting in the previous slot
+
+        # turn off the attesting power of the node in the previous slot
         for validator_node in [v for v in self.epoch_event.committees[(self.counter-1) % SLOTS_PER_EPOCH] if v.is_attesting == True]:
             validator_node.is_attesting = False
 
@@ -93,40 +92,41 @@ class SlotEvent(FixedTimeEvent):
         for validator_node in [v for v in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH] if v.is_attesting == False]:
             validator_node.is_attesting = True
 
+        self.logging.debug('proposing block for slot: {}'.format(self.counter))
+        proposer = self.epoch_event.proposers[self.counter %
+                                              SLOTS_PER_EPOCH]
         block = proposer.propose_block(self.chainstate)
-
         self.logging.debug('{} Proposer Node {}: Consensus View {} Consensus Attestations: {}'.format(block,
                                                                                                       proposer, proposer.gasper.consensus_chain, proposer.state.attestations))
 
         malicious_committee = False
-        for validator_node in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]:
-            if validator_node.malicious:
+        for attestor_node in self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]:
+            if attestor_node.malicious:
                 malicious_committee = True
 
         if proposer.malicious and malicious_committee:
             self.chainstate.set_malicious_slot()
-            attestation = None
+            attestations = []
             self.logging.warn(
                 'Malicious Node {}, So disabling block gossiping to honest node and coping the block and attestation to the rest of malicious group'.format(proposer))
             for validator_node in self.epoch_event.malicious_validators:
                 validator_node.obstruct_gossiping = True
                 validator_node.state.add_block(self.chainstate, block)
-
-            for validator_node in self.epoch_event.malicious_validators:
+                
                 if validator_node.is_attesting:
-                    attestation = validator_node.attest(self.chainstate)
+                    attestations.append(validator_node.attest(self.chainstate))
 
             for validator_node in self.epoch_event.malicious_validators:
-                if not validator_node.is_attesting:
+                for each_attestation in attestations:
                     validator_node.state.add_attestation(
-                        self.chainstate, attestation)
+                            self.chainstate, each_attestation)
 
     def __repr__(self):
         return 'Slot Event {}'.format(self.counter)
 
 
 class AttestationEvent(FixedTimeEvent):
-    def __init__(self, interval, offset, epoch_event, chainstate, rng=None, logging=logging):
+    def __init__(self, interval, offset, epoch_event: EpochEvent, chainstate: ChainState, rng=None, logging=logging):
         super().__init__(interval, offset, rng=rng)
         self.epoch_event = epoch_event
         self.logging = logging.getLogger('Attestation')
@@ -146,7 +146,7 @@ class AttestationEvent(FixedTimeEvent):
 
 
 class AdversaryEvent(FixedTimeEvent):
-    def __init__(self, interval, offset, epoch_event, chainstate, rng=None, logging=logging):
+    def __init__(self, interval, offset, epoch_event: EpochEvent, chainstate: ChainState, rng=None, logging=logging):
         super().__init__(interval, offset, rng=rng)
         self.epoch_event = epoch_event
         self.logging = logging.getLogger('Attack')

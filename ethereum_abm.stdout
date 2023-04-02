@@ -5,6 +5,7 @@ attack_probability: help = attack probability
 attackable_slots_count: help = attackable slot count
 successful_reorgs: help = successful reorgs
 failed_reorgs: help = failed reorgs
+protected_reorgs: help = protected reorgs
 malicious_blocks_proposal_percent: help = malicious block proposed percent
 malicious_blocks_finality_percent: help = malicious block in final chain percent
 malicious_finality_probability: help = malicious finality probability

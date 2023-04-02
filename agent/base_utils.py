@@ -12,7 +12,7 @@ class Network:
     """
 
     def __init__(self, graph):
-        # G is a networkx Graph
+        # graph is a networkx Graph
         self.graph = graph
 
     def __len__(self):
@@ -161,7 +161,7 @@ class ChainState():
             self.logging.error('New time should be greater than current')
         self.time = new_time
 
-    def update_gods_view(self, block=None, attestation=None):
+    def update_gods_view(self, block: Block=None, attestation: Attestation=None):
         if block:
             self.god_view_blocks.add(block)
         if attestation:
