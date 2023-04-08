@@ -3,8 +3,8 @@
 :simulation_time 3e2
 .no_neighs 8
 .no_nodes 128
-+tau_block 1 100 10
-+tau_attestation 0.1 900 100
 .malicious_stake 0
-.adversary_offset 5
+.adversary_offset 0
 .proposer_vote_boost 0
+*tau_block 1 100 1.5
+*tau_attestation 0.1 900 2 

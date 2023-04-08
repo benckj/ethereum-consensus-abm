@@ -1,0 +1,10 @@
+@execute ethereum_abm.py
+:network_topology ER
+:simulation_time 400
+.no_neighs 4
+.no_nodes 128 
++malicious_stake 0 0.2 0.1
+.adversary_offset 8
+.proposer_vote_boost 0
+*tau_block 0.1 900 3
+*tau_attestation 0.1 900 3

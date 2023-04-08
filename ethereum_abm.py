@@ -14,7 +14,7 @@
 """
 
 from spg.runner import SingleRunner
-from agent.modelling import Model
+from agent.modeling import Model
 import networkx as nx
 
 
@@ -119,9 +119,7 @@ command, options, args = parse_command_line()
 
 
 if __name__ == "__main__":
-
     for arg in args:
-
         runner = SingleRunner(arg, options.repeat)
         if options.filter is not None:
             runner.filter(options.filter)

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Process:
     '''Parent class for processes. 
     INPUT:
@@ -65,5 +66,3 @@ class AttestationGossipProcess(Process):
     def event(self):
         gossiping_node, listening_node = self.rng.choice(self.edges)
         gossiping_node.gossip_attestation(self.chainstate, listening_node)
-        
-

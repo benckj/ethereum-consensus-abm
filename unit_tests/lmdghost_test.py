@@ -17,19 +17,20 @@ class GHOST_TestCase(unittest.TestCase):
     def test_onelevel_heavyweight(self):
         # Just to check Heavy weight
         block1 = Block('1A', self.nodes[0], 1, self.genesis_block)
-        block2 = Block('1B', self.nodes[1], 1, self.genesis_block)
+        block2 = Block('1B', self.nodes[1], 2, self.genesis_block)
 
-        chain_state = ChainState(14, 1, 2, 0, 0, self.genesis_block)
+        chain_state = ChainState(14, 1, 3, 0, 0, self.genesis_block)
         self.analyze_node.state.add_block(chain_state, block1)
         self.analyze_node.state.add_block(chain_state, block2)
 
-        attestations = {1: {self.nodes[i]: block1 if i in range(
-            int(0.6 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
+        attestations = {1: {self.nodes[i]: block1 for i in range(self.no_of_nodes) if i in range(
+            int(0.6 * self.no_of_nodes))}, 2: {self.nodes[i]: block2 for i in range(self.no_of_nodes) if i not in range(
+                int(0.6 * self.no_of_nodes))}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
@@ -41,20 +42,20 @@ class GHOST_TestCase(unittest.TestCase):
     def test_onelevel_tieweight(self):
         # Just to check Tied weight
         block1 = Block('1A', self.nodes[0], 1, self.genesis_block)
-        block2 = Block('1B', self.nodes[1], 1, self.genesis_block)
+        block2 = Block('1B', self.nodes[1], 2, self.genesis_block)
 
-        chain_state = ChainState(14, 1, 2, 0, 0, self.genesis_block)
+        chain_state = ChainState(14, 1, 3, 0, 0, self.genesis_block)
         self.analyze_node.state.add_block(chain_state, block1)
         self.analyze_node.state.add_block(chain_state, block2)
 
-        attestations = {1: {self.nodes[i]: block1 if i in range(
-            int(0.5 * self.no_of_nodes)) else block2 for i in range(self.no_of_nodes)}}
+        attestations = {1: {self.nodes[i]: block1 for i in range(self.no_of_nodes) if i in range(
+            int(0.5 * self.no_of_nodes))}, 2: {self.nodes[i]: block2 for i in range(self.no_of_nodes) if i not in range(
+                int(0.5 * self.no_of_nodes))}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
-
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
         self.analyze_node.gasper.lmd_ghost(
@@ -76,8 +77,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         chain_state.update_slot(2)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
@@ -97,19 +98,19 @@ class GHOST_TestCase(unittest.TestCase):
         self.analyze_node.state.add_block(chain_state, block5)
 
         attestations = {2: {
-            self.nodes[i]: block4 if i in [0, 1, 2, ] else block3 if i in [3, 4, ] else block5 for i in range(self.no_of_nodes)}}
+            self.nodes[i]: block4 if i in [0, 1, 2] else block3 if i in [3, 4, 5, 6] else block5 for i in range(self.no_of_nodes)}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         chain_state.update_slot(3)
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
-                         0: self.genesis_block, 1: block1, 2: block4})
+                         0: self.genesis_block, 1: block1, 2: block3})
 
     def test_threelevel_heavyweight(self):
         # Just to check Heavy weight
@@ -125,8 +126,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
@@ -151,8 +152,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)
@@ -177,8 +178,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)
@@ -199,8 +200,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
@@ -225,8 +226,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)
@@ -251,8 +252,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)
@@ -289,8 +290,8 @@ class GHOST_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(
-                    Attestation(node, block, slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.analyze_node.gasper.lmd_ghost(
             chain_state, self.analyze_node.state,)

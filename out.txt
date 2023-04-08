@@ -1,0 +1,47 @@
+generating parameters for main.spg ... 
+running main.spg ... for 3 iterations
+timebudget report...
+timebudget report...
+             listen_block:    0.05ms for  301113 calls
+       listen_attestation:    0.38ms for  30247 calls
+             listen_block:    0.05ms for  302327 calls
+       listen_attestation:    0.38ms for  29986 calls
+                lmd_ghost:   10.26ms for    127 calls
+                lmd_ghost:   10.40ms for    127 calls
+                   attest:   10.15ms for    100 calls
+            propose_block:   11.98ms for     26 calls
+                   attest:   10.01ms for    100 calls
+            propose_block:   11.81ms for     26 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+timebudget report...
+             listen_block:    0.05ms for  301113 calls
+timebudget report...
+             listen_block:    0.05ms for  302327 calls
+       listen_attestation:    0.38ms for  30247 calls
+                lmd_ghost:   10.40ms for    127 calls
+       listen_attestation:    0.38ms for  29986 calls
+                   attest:   10.15ms for    100 calls
+                lmd_ghost:   10.26ms for    127 calls
+            propose_block:   11.98ms for     26 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+                   attest:   10.01ms for    100 calls
+            propose_block:   11.81ms for     26 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+timebudget report...
+             listen_block:    0.05ms for  283174 calls
+       listen_attestation:    0.38ms for  28241 calls
+                lmd_ghost:   10.30ms for    127 calls
+                   attest:   10.11ms for    100 calls
+            propose_block:   11.65ms for     26 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+timebudget report...
+             listen_block:    0.05ms for  283174 calls
+       listen_attestation:    0.38ms for  28241 calls
+                lmd_ghost:   10.30ms for    127 calls
+                   attest:   10.11ms for    100 calls
+            propose_block:   11.65ms for     26 calls
+get_cummulative_weight_subTree:    0.09ms for   1549 calls
+.... run time: 795.56 secs | 13.26 minutes | 0.22 hours
+timebudget report...
+timebudget report...

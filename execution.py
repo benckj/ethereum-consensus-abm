@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
-from agent.modelling import Model
+from agent.modeling import Model
 from networkx.drawing.nx_pydot import graphviz_layout
 
 from agent.base_utils import *
@@ -42,7 +42,16 @@ def get_cummulative_weight_subTree(given_block, attestations):
     return total_weights, only_attestation_weights
 
 
-def draw_blockchain(all_known_blocks, attestations, head_block):
+def draw_blockchain(all_known_blocks, nodes_at, head_block, name):
+    attestations = {}
+    for node, attestation in nodes_at.items():
+        if attestation.slot not in attestations.keys():
+            attestations.update({attestation.slot: {
+                node: attestation.block}})
+        else:
+            attestations[attestation.slot].update(
+                {node: attestation.block})
+
     T = to_digraph(all_known_blocks)
     pos = graphviz_layout(T, prog="dot")
 
@@ -87,14 +96,14 @@ def draw_blockchain(all_known_blocks, attestations, head_block):
 
     nx.draw_networkx_edges(T, pos=pos, node_shape='s', node_size=150, ax=ax)
 
-    fig.savefig('chain_layout_{}.png'.format(int(np.random.random()*10)), dpi='figure')
+    fig.savefig('chain_layout_con-teja_{}.png'.format(name), dpi='figure')
 
 
 if __name__ == "__main__":
     # As mentioned in the Stochatic Modelling paper,
     # the number of neighbors fixed but have to experiment multiple topologies
     net_p2p = nx.barabasi_albert_graph(
-        32, 3)
+        128, 4)
     lcc_set = max(nx.connected_components(net_p2p), key=len)
     net_p2p = net_p2p.subgraph(lcc_set).copy()
     net_p2p = nx.convert_node_labels_to_integers(
@@ -103,28 +112,37 @@ if __name__ == "__main__":
     model = Model(
         graph=net_p2p,
         tau_block=10,
-        tau_attest=100,
-        malicious_percent=0.4,
-        adversary_offset=5,
-        proposer_vote_boost=0.7,
+        tau_attest=10,
+        malicious_percent=0.25,
+        adversary_offset=11,
+        proposer_vote_boost=0.6,
     )
 
-    model.run(390)
-    print('\n Gods View Results',model.results())
+    model.run(400)
 
-    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 10, 0.7, model.genesis_block)
+    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, 0, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
     rng_node.gasper.lmd_ghost(end_state, rng_node.state)
 
-    print(model.results(rng_node))
-
-    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.gasper.get_latest_attestations(rng_node.state.attestations),
-                        rng_node.gasper.get_head_block())
+    draw_blockchain(list(model.chain_state.god_view_blocks),rng_node.state.nodes_at,
+                        rng_node.gasper.get_head_block(), "node1")
 
     rng_node2 = np.random.default_rng().choice(model.validators)
     rng_node2.gasper.lmd_ghost(end_state, rng_node2.state)
 
-    print(model.results(rng_node2))
     
-    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.gasper.get_latest_attestations(rng_node2.state.attestations),
-                        rng_node2.gasper.get_head_block())
+    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.state.nodes_at,
+                        rng_node2.gasper.get_head_block(), 'node2')
+
+    print(model.results())
+    # analyse_node = Node(model.genesis_block, 1000)
+    # analyse_node.state.local_blockchain = model.chain_state.god_view_blocks
+
+    # for slot, node_attestaions in model.chain_state.god_view_attestations.items():
+    #     for node, block in node_attestaions.items():
+    #             analyse_node.state.add_attestation(model.chain_state,
+    #                 Attestation(node, block, slot))
+
+    # analyse_node.gasper.lmd_ghost(model.chain_state, analyse_node.state)
+    # draw_blockchain(list(model.chain_state.god_view_blocks), analyse_node.state.nodes_at,
+    #                     analyse_node.gasper.get_head_block(), "god")
