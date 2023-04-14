@@ -83,7 +83,6 @@ class SlotEvent(FixedTimeEvent):
         self.chainstate.update_slot_committee_weight(
             len(self.epoch_event.committees[self.counter % SLOTS_PER_EPOCH]))
 
-
         # turn off the attesting power of the node in the previous slot
         for validator_node in [v for v in self.epoch_event.committees[(self.counter-1) % SLOTS_PER_EPOCH] if v.is_attesting == True]:
             validator_node.is_attesting = False
@@ -112,14 +111,16 @@ class SlotEvent(FixedTimeEvent):
             for validator_node in self.epoch_event.malicious_validators:
                 validator_node.obstruct_gossiping = True
                 validator_node.state.add_block(self.chainstate, block)
-                
+
                 if validator_node.is_attesting:
                     attestations.append(validator_node.attest(self.chainstate))
 
+            self.logging.warn(
+                'Malicious Node attestation {}'.format(attestations))
             for validator_node in self.epoch_event.malicious_validators:
                 for each_attestation in attestations:
                     validator_node.state.add_attestation(
-                            self.chainstate, each_attestation)
+                        self.chainstate, each_attestation)
 
     def __repr__(self):
         return 'Slot Event {}'.format(self.counter)

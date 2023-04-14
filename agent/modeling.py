@@ -142,19 +142,11 @@ class Model:
         malicious_blocks_final_count = len(
             [block for _, block in analyse_node.gasper.consensus_chain.items() if block.malicious])
 
-        delayed_block_influence = len([1 for slot in self.chain_state.reorgs if [
-                                       block for block in self.chain_state.god_view_blocks if block.slot == slot+1 and block.parent.slot != slot]])
-
-        reorg_count = len([1 for slot in self.chain_state.reorgs if (slot+2) in analyse_node.gasper.consensus_chain.keys()
-                           and slot in analyse_node.gasper.consensus_chain.keys()
-                           and analyse_node.gasper.consensus_chain[slot+2].parent == analyse_node.gasper.consensus_chain[slot]
+        reorg_count = len([1 for slot in self.chain_state.reorgs if slot in analyse_node.gasper.consensus_chain.keys()
                            and (slot+1) not in analyse_node.gasper.consensus_chain.keys()])
 
-        protected_reorgs = len([1 for slot in self.chain_state.reorgs
-                                if (slot+1) in analyse_node.gasper.consensus_chain.keys()
-                                and (slot-1) in analyse_node.gasper.consensus_chain.keys()
-                                and analyse_node.gasper.consensus_chain[slot+1].parent == analyse_node.gasper.consensus_chain[slot-1]
-                                and slot not in analyse_node.gasper.consensus_chain.keys()])
+        protected_reorgs = len([1 for slot in self.chain_state.reorgs  if slot not in analyse_node.gasper.consensus_chain.keys()  
+                                and (slot+1) in analyse_node.gasper.consensus_chain.keys()])
 
         attackable_slot_count = len(self.chain_state.reorgs)
 
@@ -173,7 +165,6 @@ class Model:
             "malicious_blocks_proposal_percent": malicious_blocks_count / len(self.chain_state.god_view_blocks),
             "malicious_blocks_finality_percent": malicious_blocks_final_count / len(analyse_node.gasper.consensus_chain.items()),
             "malicious_finality_probability": malicious_blocks_final_count / max(malicious_blocks_count, 1),
-            "delayed_block_influence": delayed_block_influence
         }
 
         return results_dict

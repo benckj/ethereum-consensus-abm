@@ -25,6 +25,7 @@ def to_digraph(blockchain):
             G.add_edge(b.value, b.parent.value)
     return G
 
+
 def get_cummulative_weight_subTree(given_block, attestations):
     total_weights = 0
     only_attestation_weights = 0
@@ -37,7 +38,8 @@ def get_cummulative_weight_subTree(given_block, attestations):
 
     if len(given_block.children) != 0:
         for block in given_block.children:
-            total_weights += get_cummulative_weight_subTree(block, attestations)[0]
+            total_weights += get_cummulative_weight_subTree(block, attestations)[
+                0]
 
     return total_weights, only_attestation_weights
 
@@ -112,27 +114,27 @@ if __name__ == "__main__":
     model = Model(
         graph=net_p2p,
         tau_block=10,
-        tau_attest=10,
-        malicious_percent=0.25,
-        adversary_offset=11,
-        proposer_vote_boost=0.6,
+        tau_attest=1,
+        malicious_percent=0.35,
+        adversary_offset=10,
+        proposer_vote_boost=0.1,
     )
 
-    model.run(400)
+    model.run(200)
 
-    end_state = ChainState(model.time,model.epoch_event.counter, model.slot_event.counter, 0, 0, model.genesis_block)
+    end_state = ChainState(model.time, model.epoch_event.counter,
+                           model.slot_event.counter, 0, 0, model.genesis_block)
     rng_node = np.random.default_rng().choice(model.validators)
     rng_node.gasper.lmd_ghost(end_state, rng_node.state)
 
-    draw_blockchain(list(model.chain_state.god_view_blocks),rng_node.state.nodes_at,
-                        rng_node.gasper.get_head_block(), "node1")
+    draw_blockchain(list(model.chain_state.god_view_blocks), rng_node.state.nodes_at,
+                    rng_node.gasper.get_head_block(), "node1")
 
     rng_node2 = np.random.default_rng().choice(model.validators)
     rng_node2.gasper.lmd_ghost(end_state, rng_node2.state)
 
-    
     draw_blockchain(list(model.chain_state.god_view_blocks), rng_node2.state.nodes_at,
-                        rng_node2.gasper.get_head_block(), 'node2')
+                    rng_node2.gasper.get_head_block(), 'node2')
 
     print(model.results())
     # analyse_node = Node(model.genesis_block, 1000)

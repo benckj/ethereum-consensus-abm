@@ -7,4 +7,4 @@
 .adversary_offset 0
 .proposer_vote_boost 0
 .tau_block 1
-+tau_attestation 1 20 1
++tau_attestation 1 300 12
