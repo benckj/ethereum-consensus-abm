@@ -122,7 +122,7 @@ class Attestation():
         return hash((self.attestor, self.slot, self.block))
 
     def __repr__(self):
-        return '<Attestation: Block {} by node {}>'.format(self.block.value, self.slot, self.attestor.id)
+        return '<Attestation: Block {} at slot {} by node {}>'.format(self.block.value, self.slot, self.attestor.id)
 
 
 class ChainState():
@@ -161,7 +161,7 @@ class ChainState():
             self.logging.error('New time should be greater than current')
         self.time = new_time
 
-    def update_gods_view(self, block: Block=None, attestation: Attestation=None):
+    def update_gods_view(self, block: Block = None, attestation: Attestation = None):
         if block:
             self.god_view_blocks.add(block)
         if attestation:
@@ -179,4 +179,4 @@ class ChainState():
         return hash((self.time, self.slot, self.slot_committee_weight))
 
     def __repr__(self):
-        return '<Slot: {} at {} with committee weight {}>'.format(self.slot, self.time, self.slot_committee_weight)
+        return '<Slot: {} at epoch{} at time {} with committee weight {}>'.format(self.slot, self.epoch, self.time, self.slot_committee_weight)

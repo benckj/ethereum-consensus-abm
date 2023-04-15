@@ -12,12 +12,12 @@ class NodeState:
         self.cached_attestations = set()  # set of Attestation Object(slot,node,block)
         self.cached_blocks = set()
         self.logging = logging.getLogger('Node State')
-        self.nodes_at = {}      # {node: block}
+        self.nodes_at = {}      # {node: Attestation}
         self.proposer_booster = None
 
     def update_receiving(self, chainstate: ChainState, block: Block):
         """
-        Function is used to update node's proposer_booster block with he eligibility criterias:
+        Function is used to update node's proposer_booster block with eligibility criterias:
             - Block has to be received in the current slot of the Network
             - Block has to be received before 1st interval of the `SECONDS_PER_SLOT`
          This is used in the `add_block` in the `NodeState` class. 
@@ -29,7 +29,6 @@ class NodeState:
         block: Block object: 
             This is the Block to be used to update the proposer boost.
         """
-
         if chainstate.slot == block.slot and (chainstate.time % SECONDS_PER_SLOT) < (SECONDS_PER_SLOT // INTERVALS_PER_SLOT):
             self.proposer_booster = block
 
@@ -108,9 +107,14 @@ class NodeState:
         self.attestations[attestation.slot][attestation.attestor] = attestation.block
         self.update_nodesAt_byLatestAttestation(attestation)
 
-    def update_nodesAt_byLatestAttestation(self, latest_attestation):
+    def update_nodesAt_byLatestAttestation(self, latest_attestation: Attestation):
         """
-        Function updates node state with the latest attestation of a node.
+        Function updates node state with the latest attestation.
+
+        Parameters
+        ----------
+        Attestation: Attestation object: 
+            attestation used to update the node's state.
         """
         if latest_attestation.attestor in self.nodes_at.keys():
             current_block_at = self.nodes_at[latest_attestation.attestor]
@@ -121,10 +125,16 @@ class NodeState:
             return
         self.nodes_at[latest_attestation.attestor] = latest_attestation
 
-    def check_cached_attestations(self, chainstate):
+    def check_cached_attestations(self, chainstate: ChainState):
         """
         Function includes node state cached attestations into attestations if criteria passes:
-         - Block is known by the node and attestation slot is atleast one slot older than current slot of the network
+         - Block is known by the node
+         - Attestation slot is atleast one slot older than current slot of the network
+
+        Parameters
+        ----------
+        chainstate: ChainState object: 
+            This the network state object passed on globally.
         """
         for attestation in self.cached_attestations.copy():
             if attestation.block in self.local_blockchain and chainstate.slot > attestation.slot:
@@ -173,7 +183,7 @@ class Node:
             raise "Setup Issue"
 
         # check if the slot is colliding
-        new_block = Block('E{}_S{}'.format(
+        new_block = Block(value='E{}_S{}'.format(
             chainstate.epoch, chainstate.slot), emitter=self, slot=chainstate.slot,
             parent=head_block, malicious=self.malicious)
 

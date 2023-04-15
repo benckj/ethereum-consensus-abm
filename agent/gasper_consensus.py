@@ -24,7 +24,21 @@ class Gasper:
         self.consensus_chain = {self.finalized_head_slot: genesis_block}
         self.logging = logging.getLogger('ConsensusAlgo')
 
-    def get_cummulative_weight_subTree(self, given_block, node_state, chainstate: ChainState):
+    def get_cummulative_weight_subTree(self, given_block: Block, node_state, chainstate: ChainState):
+        """
+        Function provides the weight of a block by cummulatively summing the attestation weight of the block and its descedant
+
+        If a node's proposer boost block matches the block analyzed, then this functions also adds the proposer vote boost times slot committee weight
+
+        Parameters
+        ----------
+        given_block: Block object: 
+            This is the Block to be used to update the proposer boost.
+        node_state: NodeState object:
+            This is NodeState of the node for which the LMD GHOST uses the attestations
+        chainstate: ChainState object: 
+            This the network state object passed on globally to provide current status of the network.
+        """
         # Memoizing the subtree weights
         if given_block in self.cummulative_weight_subTree.keys():
             return self.cummulative_weight_subTree[given_block]
@@ -48,6 +62,16 @@ class Gasper:
         return total_weights
 
     def lmd_ghost(self, chainstate: ChainState, node_state):
+        """
+        Function executes the fork choice Hybrid version of the LMD GHOST.
+
+        Parameters
+        ----------
+        node_state: NodeState object:
+            This is NodeState of the node for which the LMD GHOST uses the attestations
+        chainstate: ChainState object: 
+            This the network state object passed on globally to provide current status of the network.
+        """
         # check the cached attestations and update the nodes_at
         node_state.check_cached_attestations(chainstate)
 
@@ -89,7 +113,9 @@ class Gasper:
                 self.consensus_chain[heavyBlock.slot] = heavyBlock
 
             previous_head = heavyBlock
+
         # # As there is no finality gadget, this was placed here. To try to emulate similar behavior.
+        # Conditions: the finalized head slot block is updated every SLOTS_PER_EPOCH.
         if (chainstate.slot - 1) % SLOTS_PER_EPOCH == 0 and chainstate.slot > SLOTS_PER_EPOCH:
             self.finalized_head_slot = max(
                 max(self.consensus_chain.keys()), self.finalized_head_slot)

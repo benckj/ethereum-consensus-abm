@@ -145,7 +145,7 @@ class Model:
         reorg_count = len([1 for slot in self.chain_state.reorgs if slot in analyse_node.gasper.consensus_chain.keys()
                            and (slot+1) not in analyse_node.gasper.consensus_chain.keys()])
 
-        protected_reorgs = len([1 for slot in self.chain_state.reorgs  if slot not in analyse_node.gasper.consensus_chain.keys()  
+        protected_reorgs = len([1 for slot in self.chain_state.reorgs if slot not in analyse_node.gasper.consensus_chain.keys()
                                 and (slot+1) in analyse_node.gasper.consensus_chain.keys()])
 
         attackable_slot_count = len(self.chain_state.reorgs)
