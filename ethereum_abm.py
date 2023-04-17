@@ -1,18 +1,33 @@
 """
     copyright 2022 uzh
     This file is part of ethereum-consensus-abm.
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     ethereum-consensus-abm is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     ethereum-consensus-abm is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
+<<<<<<< HEAD
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum-consensus-abm.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+=======
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with ethereum-consensus-abm.  If not, see <http://www.gnu.org/licenses/>.
+"""
+>>>>>>> main
 from spg.runner import SingleRunner
 from agent.modeling import Model
 import networkx as nx
@@ -104,6 +119,7 @@ def run_simulation(parameters):
     - results,  dict
     """
     model = Model(
+<<<<<<< HEAD
         graph=__set_up_topology(parameters),
         tau_block=parameters['tau_block'],
         tau_attest=parameters['tau_attestation'],
@@ -111,6 +127,12 @@ def run_simulation(parameters):
         adversary_offset=parameters['adversary_offset'],
         proposer_vote_boost=parameters['proposer_vote_boost'],
     )
+=======
+            graph=__set_up_topology(parameters),
+            tau_block=parameters['tau_block'],
+            tau_attest=parameters['tau_attestation']
+            )
+>>>>>>> main
     model.run(parameters["simulation_time"])
     return model.results()
 
