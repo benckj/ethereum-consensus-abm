@@ -70,9 +70,12 @@ with a `main.spg` like:
 :simulation_time 2e2
 .no_neighs 3
 .no_nodes 64
+<<<<<<< HEAD
 .malicious_stake 0
 .adversary_offset 0
 .proposer_vote_boost 0
+=======
+>>>>>>> main
 +tau_block 11 12 .5
 +tau_attestation 11 12 0.5
 ```
