@@ -70,6 +70,9 @@ with a `main.spg` like:
 :simulation_time 2e2
 .no_neighs 3
 .no_nodes 64
+.malicious_stake 0
+.adversary_offset 0
+.proposer_vote_boost 0
 +tau_block 11 12 .5
 +tau_attestation 11 12 0.5
 ```
@@ -153,6 +156,7 @@ The result look like this:
 
 ## Authors
 You can contact us for any inquiry at:
+- Saiteja Reddy Pottanigari [tejareddy8888](https://github.com/tejareddy8888)
 - Nicolo' Vallarano: vallarano `at` ifi.uzh.ch, [nicoloval](https://github.com/nicoloval)
 - Caspar Schwarz-Schilling: [casparschwa](https://github.com/casparschwa)
 - Benjamin Kraner: [benckj](https://github.com/benckj)
