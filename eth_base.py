@@ -117,8 +117,8 @@ class LateProposal(FixedTimeEvent):
     """Block Proposal event for delayer nodes.
     Creates bugs if latency is way larger than slot time.
     """
-    def __init__(self, interval, delay, rng=None):
-        super().__init__(interval, rng=rng)
+    def __init__(self, interval, delay, offset=np.inf, rng=None):
+        super().__init__(interval, offset=offset, rng=rng)
         self.proposer = None
         self.delay = delay
 
