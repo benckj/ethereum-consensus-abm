@@ -126,7 +126,7 @@ class LateProposal(FixedTimeEvent):
         self.proposer = proposer
 
     def set_next_time(self, time):
-        self.next_time = time + self.delay
+        self.next_event = time + self.delay
 
     def event(self):
         self.proposer.propose_block()
