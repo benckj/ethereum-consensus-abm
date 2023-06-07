@@ -19,6 +19,7 @@ import random as rnd
 import logging
 import networkx as nx
 import numpy as np
+import math
 
 
 class Process:
@@ -93,6 +94,10 @@ class FixedTimeEvent():
         self.counter = 0
 
     def trigger(self, next_time):
+        """Check if current FixedTimeEvent happens before next
+        random event time next_event.
+        If it does, activate the event trough method event().
+        """
         while next_time >= self.next_event:
             self.counter += 1
             self.event()
@@ -102,14 +107,43 @@ class FixedTimeEvent():
         return False
 
     def event(self):
+        """Activate FixedTimeEvent effects.
+        Each FixedTimeEvent has a custom event method.
+        """
         pass
 
 
+class LateProposal(FixedTimeEvent):
+    """Block Proposal event for delayer nodes.
+    Creates bugs if latency is way larger than slot time.
+    """
+    def __init__(self, interval, delay, rng=None):
+        super().__init__(interval, rng=rng)
+        self.proposer = None
+        self.delay = delay
+
+    def set_proposer(self, proposer):
+        self.proposer = proposer
+
+    def set_next_time(self, time):
+        self.next_time = time + self.delay
+
+    def event(self):
+        self.proposer.propose_block()
+
+
 class SlotBoundary(FixedTimeEvent):
-    def __init__(self, interval, validators, epoch_boundary, rng=None):
+    """Event to start new slot.
+    - Assign slot validators.
+    - Assign epoch of the slot.
+    - Enable attesters.
+    - Select block proposer and release slot block.
+    """
+    def __init__(self, interval, validators, epoch_boundary, late_proposal, rng=None):
         super().__init__(interval, rng=rng)
         self.validators = validators
         self.epoch_boundary = epoch_boundary
+        self.late_proposal = late_proposal
 
     def event(self):
 
@@ -118,9 +152,16 @@ class SlotBoundary(FixedTimeEvent):
             v.is_attesting = True
 
         proposer = self.rng.choice(self.validators)
-        proposer.propose_block()
+        if proposer.delayer:
+            self.late_proposal.set_proposer(proposer)
+            self.late_proposal.set_next_time(self.next_event)
+        # TODO: remove propose block, pass proposer to model.
 
-        #print('Block proposed')
+        else:
+            # if proposer is not a delayer, just propose block here
+            proposer.propose_block()
+
+        # print('Block proposed')
 
 
 class EpochBoundary(FixedTimeEvent):
@@ -228,6 +269,7 @@ class Node:
         self.attestations = {}
         self.cached_attestations = {}
         self.is_attesting = True
+        self.delayer = False
 
     def propose_block(self):
         head_of_chain = self.use_lmd_ghost()
@@ -412,30 +454,41 @@ class Model:
                  graph=None,
                  tau_block=None,
                  tau_attest=None,
+                 delay_share=0,
+                 delay_time=0,
                  seed=None):
-
+        # set random seed
         self.rng = np.random.default_rng(seed)
-
+        # set internal variables
         self.tau_block = tau_block
         self.tau_attest = tau_attest
         self.slots_per_epoch = 1
-
+        self.delay_share = delay_share
+        self.delay_time = delay_time
+        # init the blocktree
         self.blockchain = [Block()]
+        # set up peers
         self.network = Network(graph)
         self.N = len(self.network)
         self.nodes = [Node(blockchain=self.blockchain,
                            rng=self.rng, id=i, model=self)
                       for i in range(self.N)]
-
+        # validators == peers
         self.validators = self.nodes
-
-        for n in self.nodes:
-            n.attestations = {v: (self.blockchain[0], -1)
-                              for v in self.validators}
-
+        # set up delayers nodes
+        if self.delay_share > 0:
+            self.delay_nodes = self.rng.choice(self.nodes, size=math.floor(self.N*self.delay_share))
+            for node in self.delay_nodes:
+                node.delayer = True
+        # init attestations
+        for node in self.nodes:
+            node.attestations = {v: (self.blockchain[0], -1)
+                                 for v in self.validators}
+        # set up p2p network
         self.network.set_neighborhood(self.nodes)
         self.edges = [(n, k) for n in self.nodes for k in n.neighbors]
 
+        # set up stochastic processes
         self.block_gossip_process = BlockGossipProcess(tau=self.tau_block,
                                                        edges=self.edges)
         self.attestation_gossip_process = AttestationGossipProcess(
@@ -446,23 +499,30 @@ class Model:
                                             validators=self.validators,
                                             slots_per_epoch=self.slots_per_epoch,
                                             rng=self.rng)
-
-        self.slot_boundary = SlotBoundary(12, self.validators,
+        self.late_proposal = LateProposal(np.inf,
+                                            delay=self.delay_time,
+                                            rng=self.rng)
+        self.slot_boundary = SlotBoundary(12,
+                                          self.validators,
                                           self.epoch_boundary,
+                                          late_proposal=self.late_proposal,
                                           rng=self.rng)
-        self.attestation_boundary = AttestationBoundary(12, offset=4,
-                                        validators=self.validators,
-                                        rng=self.rng)
+        self.attestation_boundary = AttestationBoundary(12,
+                                                        offset=4,
+                                                        validators=self.validators,
+                                                        rng=self.rng)
 
         self.processes = [self.block_gossip_process,
                           self.attestation_gossip_process]
         self.fixed_events = [self.epoch_boundary, self.slot_boundary,
-                             self.attestation_boundary]
-
+                             self.attestation_boundary, self.late_proposal]
+        # set up gillespie model
         self.gillespie = Gillespie(self.processes, self.rng)
         self.time = 0
 
     def run(self, stoping_time):
+        """Method to run the model. Needs stopping time.
+        """
         while self.time < stoping_time:
             # generate next random increment time and save it in self.increment
             increment = self.gillespie.calculate_time_increment()
@@ -490,7 +550,6 @@ class Model:
 
             if flag_blocks_are_the_same and flag_attestations_are_the_same:
                 self.time = min([fixed.next_event for fixed in self.fixed_events])
-
 
 
     def results(self):

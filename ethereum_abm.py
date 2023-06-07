@@ -108,7 +108,9 @@ def run_simulation(parameters):
     model = Model(
             graph=__set_up_topology(parameters),
             tau_block=parameters['tau_block'],
-            tau_attest=parameters['tau_attestation']
+            tau_attest=parameters['tau_attestation'],
+            delay_share=parameters['delay_share'],
+            delay_time=parameters['delay_time'],
             )
     model.run(parameters["simulation_time"])
     return model.results()
