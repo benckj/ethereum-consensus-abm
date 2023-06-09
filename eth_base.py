@@ -217,7 +217,7 @@ class Block:
         Number of transactions in the block
     '''
 
-    def __init__(self, emitter="genesis", parent=None, slot_no=0):
+    def __init__(self, emitter="genesis", parent=None, slot_no=0, attestation_share=1):
 
         self.slot_no = slot_no
 
@@ -237,6 +237,7 @@ class Block:
             parent.children.add(self)
             self.predecessors = parent.predecessors.copy()
             self.predecessors.add(self)
+            self.attestation_share = attestation_share
 
     def __repr__(self):
         return '<Block {} (h={})>'.format(self.slot_no, self.height)
@@ -272,12 +273,13 @@ class Node:
         self.delayer = False
 
     def propose_block(self):
-        head_of_chain = self.use_lmd_ghost()
+        head_of_chain, attestation_share = self.use_lmd_ghost()
         #print('this is head', head_of_chain, ' by ', self)
         #print('Block predecessors', head_of_chain.predecessors)
 
         new_block = Block(emitter=self, parent=head_of_chain,
-                          slot_no=self.model.slot_boundary.counter)
+                          slot_no=self.model.slot_boundary.counter,
+                          attestation_share=attestation_share)
         #print('new_block pre', new_block.predecessors)
 
         self.local_blockchain.add(new_block)
@@ -285,7 +287,7 @@ class Node:
         return
 
     def issue_attestation(self):
-        self.attestations[self] = (self.use_lmd_ghost(),
+        self.attestations[self] = (self.use_lmd_ghost()[0],
                                    self.model.slot_boundary.counter)
 
     def receive_attestations(self, attestations):
@@ -614,6 +616,8 @@ def lmd_ghost(blockchain, attestations):
     sum_stake = lambda node_list : sum([stake_attestation_evaluation(node) for node in node_list])
     # evaluate leaves weight
     leaves_weight = {block: sum_stake(item) for block, item in inverse_attestations.items()}
+    # todo: check if it's correct
+    total_leaves_weight = sum(list(leaves_weight.values()))
     # assign weight to all blocks in the local blocktree
     # all blocks have 0 by default
     blocks_weight = {block: 0 for block in blockchain}
@@ -645,7 +649,7 @@ def lmd_ghost(blockchain, attestations):
         # update new head chain
         head_chain = list_head_chain[0]
 
-    return head_chain
+    return head_chain, blocks_weight[head_chain]/total_leaves_weight
 
 
 def blockchain_to_digraph(blockchain):
@@ -688,7 +692,7 @@ def calculate_mainchain_rate(blockchain, attestations):
 
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    head_block = lmd_ghost(blockchain, attestations)
+    head_block, attestation_share = lmd_ghost(blockchain, attestations)
     main_chain = head_block.predecessors
     return len(main_chain)/len(blockchain)
 
@@ -715,7 +719,7 @@ def calculate_branch_ratio(blockchain, attestations):
     #    blockchain_list = blockchain.copy()
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    main_chain = lmd_ghost(blockchain, attestations).predecessors
+    main_chain= lmd_ghost(blockchain, attestations)[0].predecessors
     orphan_chain = blockchain - main_chain
 
     counter = 0
@@ -760,7 +764,7 @@ def calculate_delayer_orphan_rate(blockchain, attestations):
     """
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    head_block = lmd_ghost(blockchain, attestations)
+    head_block, attestation_share = lmd_ghost(blockchain, attestations)
     main_chain = head_block.predecessors
 
     orphan_counter = 0
