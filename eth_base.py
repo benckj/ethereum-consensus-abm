@@ -770,9 +770,10 @@ def calculate_delayer_orphan_rate(blockchain, attestations):
     orphan_counter = 0
     block_counter = 0
     for block in blockchain:
-        if block.emitter.delayer:
-            block_counter += 1
-            if block not in main_chain:
-                orphan_counter += 1
+        if block.emitter != 'genesis':
+            if block.emitter.delayer:
+                block_counter += 1
+                if block not in main_chain:
+                    orphan_counter += 1
 
     return orphan_counter/block_counter
