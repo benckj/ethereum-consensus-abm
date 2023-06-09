@@ -570,7 +570,8 @@ class Model:
             "branch_ratio": calculate_branch_ratio(self.blockchain, god_view_attestations),
             "blocktree_entropy": calculate_entropy(self.blockchain),
             "diameter": calculate_diameter(self.network),
-            "average_shortest_path": calculate_average_shortest_path(self.network)
+            "average_shortest_path": calculate_average_shortest_path(self.network),
+            "delayer_orphan_rate": calculate_delayer_orphan_rate(self.blockchain, god_view_attestations),
             }
         return results_dict
 
@@ -731,19 +732,43 @@ def calculate_entropy(blockchain):
     """
     # compute the degree frequency
     degrees = np.array([len(block.children) for block in blockchain])
-    degrees_unique, degrees_counts  = np.unique(degrees, return_counts=True)
+    degrees_unique, degrees_counts = np.unique(degrees, return_counts=True)
     degrees_frequencies = degrees_counts/degrees_counts.sum()
     tmp = 0
     for prob in degrees_frequencies:
         tmp -= prob*np.log(prob)
     return tmp
 
+
 def calculate_diameter(net):
     """Compute diameter of the p2p network
     """
     return nx.diameter(net.network)
 
+
 def calculate_average_shortest_path(net):
     """Compute diameter of the p2p network
     """
     return nx.average_shortest_path_length(net.network)
+
+
+def calculate_delayer_orphan_rate(blockchain, attestations):
+    """Compute the orphan rate for blocks produced by
+    delayer nodes.
+    The orphan rate is defined as the number of blocks produced by delayers
+    that are orphaned over the total number of blocks produced by delayers.
+    """
+    if isinstance(blockchain, list):
+        blockchain = set(blockchain)
+    head_block = lmd_ghost(blockchain, attestations)
+    main_chain = head_block.predecessors
+
+    orphan_counter = 0
+    block_counter = 0
+    for block in blockchain:
+        if block.emitter.delayer:
+            block_counter += 1
+            if block not in main_chain:
+                orphan_counter += 1
+
+    return orphan_counter/block_counter
