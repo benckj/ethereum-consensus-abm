@@ -20,6 +20,7 @@ import logging
 import networkx as nx
 import numpy as np
 import math
+import pickle as pkl
 
 
 class Process:
@@ -576,6 +577,13 @@ class Model:
             "delayer_orphan_rate": calculate_delayer_orphan_rate(self.blockchain, god_view_attestations),
             }
         return results_dict
+
+        def dump_block_data(blockchain, path):
+            """Dump blocks in a pickle.
+            Careful in using with pyspg.
+            """
+            with open(path + ".pkl", "wb") as pfile:
+                pkl.dump(blockchain, pfile)
 
 
 # FUNCTIONS
