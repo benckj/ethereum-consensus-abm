@@ -94,4 +94,6 @@ if __name__ == "__main__":
             )
     model.run(parameters["simulation_time"])
 
-    model.dump_block_data("test")
+    model.dump_block_data(path="test")
+
+    print(model.results())

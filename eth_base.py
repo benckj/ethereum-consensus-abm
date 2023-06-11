@@ -554,7 +554,6 @@ class Model:
             if flag_blocks_are_the_same and flag_attestations_are_the_same:
                 self.time = min([fixed.next_event for fixed in self.fixed_events])
 
-
     def results(self):
         """This functions returns a dictionary containing the
         experiments results, meaning the value functions computed
@@ -578,12 +577,14 @@ class Model:
             }
         return results_dict
 
-        def dump_block_data(blockchain, path):
-            """Dump blocks in a pickle.
-            Careful in using with pyspg.
-            """
-            with open(path + ".pkl", "wb") as pfile:
-                pkl.dump(blockchain, pfile)
+    def dump_block_data(self, path, blockchain=None):
+        """Dump blocks in a pickle.
+        Careful in using with pyspg.
+        """
+        if blockchain is None:
+            blockchain = self.blockchain
+        with open(path + ".pkl", "wb") as pfile:
+            pkl.dump(blockchain, pfile)
 
 
 # FUNCTIONS
