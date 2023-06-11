@@ -1,5 +1,9 @@
+# dont track the virtual environment
 eth-env/
 
+# dont carre about cache
 tests/__pycache__/*
-
 __pycache__/
+
+# output of test.py
+test.pkl
