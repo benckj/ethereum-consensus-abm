@@ -177,7 +177,7 @@ class EpochBoundary(FixedTimeEvent):
         self.leftover = self.v_n - (self.committee_size * self.slots_per_epoch)
 
     def event(self):
-        #print(self.validators)
+        # print(self.validators)
         self.rng.shuffle(self.validators)
         self.committees = [[self.validators[v+c*self.committee_size]
                             for v in range(self.committee_size)]
@@ -192,7 +192,7 @@ class EpochBoundary(FixedTimeEvent):
             v.is_attesting = False
 
         #print('New Epoch: Committees formed')
-
+ 
 
 class AttestationBoundary(FixedTimeEvent):
     def __init__(self, interval, offset, validators, rng=None):
@@ -218,7 +218,7 @@ class Block:
         Number of transactions in the block
     '''
 
-    def __init__(self, emitter="genesis", parent=None, slot_no=0, attestation_share=1):
+    def __init__(self, emitter="genesis", parent=None, slot_no=0, attestations={}):
 
         self.slot_no = slot_no
 
@@ -238,7 +238,7 @@ class Block:
             parent.children.add(self)
             self.predecessors = parent.predecessors.copy()
             self.predecessors.add(self)
-            self.attestation_share = attestation_share
+            self.attestations = attestations
 
     def __repr__(self):
         return '<Block {} (h={})>'.format(self.slot_no, self.height)
@@ -274,13 +274,14 @@ class Node:
         self.delayer = False
 
     def propose_block(self):
-        head_of_chain, attestation_share = self.use_lmd_ghost()
+        head_of_chain = self.use_lmd_ghost()
         #print('this is head', head_of_chain, ' by ', self)
         #print('Block predecessors', head_of_chain.predecessors)
+        # compute attestation share of head_of_chain
 
         new_block = Block(emitter=self, parent=head_of_chain,
                           slot_no=self.model.slot_boundary.counter,
-                          attestation_share=attestation_share)
+                          attestations=self.attestations.copy())
         #print('new_block pre', new_block.predecessors)
 
         self.local_blockchain.add(new_block)
@@ -288,7 +289,7 @@ class Node:
         return
 
     def issue_attestation(self):
-        self.attestations[self] = (self.use_lmd_ghost()[0],
+        self.attestations[self] = (self.use_lmd_ghost(),
                                    self.model.slot_boundary.counter)
 
     def receive_attestations(self, attestations):
@@ -577,7 +578,7 @@ class Model:
             }
         return results_dict
 
-    def dump_block_data(self, path, blockchain=None):
+    def dump_blockchain_data(self, path, blockchain=None):
         """Dump blocks in a pickle.
         Careful in using with pyspg.
         """
@@ -626,11 +627,11 @@ def lmd_ghost(blockchain, attestations):
     # evaluate leaves weight
     leaves_weight = {block: sum_stake(item) for block, item in inverse_attestations.items()}
     # todo: check if it's correct
-    total_leaves_weight = sum(list(leaves_weight.values()))
+    # total_leaves_weight = sum(list(leaves_weight.values()))
     # assign weight to all blocks in the local blocktree
     # all blocks have 0 by default
     blocks_weight = {block: 0 for block in blockchain}
-    # attested leaves have anon-zero weight
+    # attested leaves have a non-zero weight
     blocks_weight.update(leaves_weight)
     # diffuse the non-zero weight upward the blocktree branches
     for leaf, leaf_weight in leaves_weight.items():
@@ -658,7 +659,7 @@ def lmd_ghost(blockchain, attestations):
         # update new head chain
         head_chain = list_head_chain[0]
 
-    return head_chain, blocks_weight[head_chain]/total_leaves_weight
+    return head_chain
 
 
 def blockchain_to_digraph(blockchain):
@@ -701,7 +702,7 @@ def calculate_mainchain_rate(blockchain, attestations):
 
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    head_block, attestation_share = lmd_ghost(blockchain, attestations)
+    head_block = lmd_ghost(blockchain, attestations)
     main_chain = head_block.predecessors
     return len(main_chain)/len(blockchain)
 
@@ -728,7 +729,7 @@ def calculate_branch_ratio(blockchain, attestations):
     #    blockchain_list = blockchain.copy()
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    main_chain= lmd_ghost(blockchain, attestations)[0].predecessors
+    main_chain= lmd_ghost(blockchain, attestations).predecessors
     orphan_chain = blockchain - main_chain
 
     counter = 0
@@ -773,7 +774,7 @@ def calculate_delayer_orphan_rate(blockchain, attestations):
     """
     if isinstance(blockchain, list):
         blockchain = set(blockchain)
-    head_block, attestation_share = lmd_ghost(blockchain, attestations)
+    head_block = lmd_ghost(blockchain, attestations)
     main_chain = head_block.predecessors
 
     orphan_counter = 0
