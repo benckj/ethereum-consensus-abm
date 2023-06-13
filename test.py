@@ -70,6 +70,7 @@ def run_simulation(parameters):
     model.run(parameters["simulation_time"])
     return model.results()
 
+
 if __name__ == "__main__":
 
     parameters = {}
@@ -82,5 +83,17 @@ if __name__ == "__main__":
     parameters['no_neighs'] = 3
     parameters['simulation_time'] = 1000
 
-    res = run_simulation(parameters)
-    print(res)
+    # res = run_simulation(parameters)
+
+    model = Model(
+            graph=__set_up_topology(parameters),
+            tau_block=parameters['tau_block'],
+            tau_attest=parameters['tau_attestation'],
+            delay_share=parameters['delay_share'],
+            delay_time=parameters['delay_time'],
+            )
+    model.run(parameters["simulation_time"])
+
+    model.dump_blockchain_data(path="test")
+
+    print(model.results())
