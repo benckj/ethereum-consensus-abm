@@ -53,7 +53,7 @@ Three files are needed in order for this command to work:
 - `ethereum_abm.py` which is a wrapper to run the model trought pyspg
 - `ethereum_abm.input` which is a file which records the inputs parameters for the model and their default value
 - `ethereum_abm.stdout` which is a file which records the expected outputs
-- `main.spg` wherech actually defines the "experiment": it assigns the parameters ranges, using pyspg sintax(see [pyspg wiki](https://github.com/tessonec/PySPG/wiki/Tutorial%3A-A-crash-course))
+- `main.spg` which actually defines the "experiment": it assigns the parameters ranges, using pyspg sintax(see [pyspg wiki](https://github.com/tessonec/PySPG/wiki/Tutorial%3A-A-crash-course))
 
 ## Results intepretation
 The output of the command in the previous section is a csv file,
