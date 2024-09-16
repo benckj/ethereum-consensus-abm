@@ -1,2 +1,0 @@
-no_neighs,no_nodes,malicious_stake,adversary_offset,proposer_vote_boost,tau_block,tau_attestation,mainchain_rate,branch_ratio,blocktree_entropy
-8,128,0.2,4,0.0,10.0,9.0,0.9,0.1111111111111111,0.8018185525433372,1,0.2,0,0.1111111111111111

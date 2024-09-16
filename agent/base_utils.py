@@ -12,7 +12,7 @@ class Network:
     """
 
     def __init__(self, graph):
-        # G is a networkx Graph
+        # graph is a networkx Graph
         self.graph = graph
 
     def __len__(self):
@@ -54,7 +54,6 @@ class Block:
         self.children = set()
         self.parent = parent
         self.value = value
-        self.booster_weight = 0
         self.slot = slot
         self.malicious = malicious
 
@@ -93,15 +92,6 @@ class Block:
             return None
         return hash((self.parent, self.value, self.slot, self.height, self.emitter))
 
-    def update_receiving(self, chainstate):
-        """
-        Function is used to add booster_weight to the block recevied by a node, this is used in the `add_block` in the `NodeState` class. 
-        """
-        if chainstate.slot == self.slot and chainstate.time % SECONDS_PER_SLOT < SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
-            self.booster_weight = chainstate.proposer_vote_boost
-        else:
-            self.booster_weight = 0
-
     def copy(self):
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
@@ -132,7 +122,7 @@ class Attestation():
         return hash((self.attestor, self.slot, self.block))
 
     def __repr__(self):
-        return '<Attestation: Block {} by node {}>'.format(self.block.value, self.slot, self.attestor.id)
+        return '<Attestation: Block {} at slot {} by node {}>'.format(self.block.value, self.slot, self.attestor.id)
 
 
 class ChainState():
@@ -171,7 +161,7 @@ class ChainState():
             self.logging.error('New time should be greater than current')
         self.time = new_time
 
-    def update_gods_view(self, block=None, attestation=None):
+    def update_gods_view(self, block: Block = None, attestation: Attestation = None):
         if block:
             self.god_view_blocks.add(block)
         if attestation:
@@ -189,4 +179,4 @@ class ChainState():
         return hash((self.time, self.slot, self.slot_committee_weight))
 
     def __repr__(self):
-        return '<Slot: {} at {} with committee weight {}>'.format(self.slot, self.time, self.slot_committee_weight)
+        return '<Slot: {} at epoch{} at time {} with committee weight {}>'.format(self.slot, self.epoch, self.time, self.slot_committee_weight)

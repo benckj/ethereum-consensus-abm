@@ -3,7 +3,7 @@ import sys
 sys.path.extend("../")
 
 import unittest
-from agent.base_utils import Block, ChainState
+from agent.base_utils import Block, ChainState, Attestation
 from agent.node import Node
 
 
@@ -22,7 +22,9 @@ class BranchRatio_TestCases(unittest.TestCase):
         mock_node = Node(genesis, 0)
         mock_node1 = Node(genesis, 1)
         mock_node2 = Node(genesis, 2)
+        analyze_node = Node(genesis,3)
 
+        chain_state = ChainState(14, 1, 2, 0, 0, genesis)
         mock_blockchain.update([genesis])
 
         block_1 = Block(
@@ -32,7 +34,7 @@ class BranchRatio_TestCases(unittest.TestCase):
             genesis
 
         )
-        mock_node.state.local_blockchain.update([block_1])
+        analyze_node.state.add_block(chain_state, block_1)
         mock_blockchain.update([block_1])
 
         block_2 = Block(
@@ -41,7 +43,8 @@ class BranchRatio_TestCases(unittest.TestCase):
             2,
             block_1
         )
-        mock_node.state.local_blockchain.update([block_2])
+        chain_state.update_slot(3)
+        analyze_node.state.add_block(chain_state, block_2)
         mock_blockchain.update([block_2])
 
         block_3 = Block(
@@ -50,7 +53,8 @@ class BranchRatio_TestCases(unittest.TestCase):
             3,
             block_1
         )
-        mock_node.state.local_blockchain.update([block_3])
+        chain_state.update_slot(4)
+        analyze_node.state.add_block(chain_state, block_3)
         mock_blockchain.update([block_3])
 
         block_4 = Block(
@@ -59,24 +63,29 @@ class BranchRatio_TestCases(unittest.TestCase):
             4,
             block_2
         )
-        mock_node.state.local_blockchain.update([block_4])
+        chain_state.update_slot(5)
+        analyze_node.state.add_block(chain_state, block_4)
         mock_blockchain.update([block_4])
         
         ###################
         # mock attestations
 
-        mock_node.state.attestations = {
+        attestations = {
             1: {mock_node: block_1, mock_node1: block_1, mock_node2: block_1},
             2: {mock_node: block_1, mock_node1: block_1, mock_node2: block_2},
             3: {mock_node: block_3, mock_node1: block_3, mock_node2: block_2},
-            4: {mock_node: block_3, mock_node1: block_3, mock_node2: block_4, },
+            4: {mock_node: block_3, mock_node1: block_3, mock_node2: block_4},
         }
+
+        for slot, node_attestaions in attestations.items():
+            for node, block in node_attestaions.items():
+                analyze_node.state.add_attestation(chain_state,
+                    Attestation(node, block, slot))
 
         ###################
         # mock consensus
-        chain_state = ChainState(50, 1, 5, 0, 0, genesis)
-        mock_node.gasper.lmd_ghost(chain_state, mock_node.state)
+        analyze_node.gasper.lmd_ghost(chain_state, analyze_node.state)
 
         # testing
         self.assertEqual(
-            mock_node.gasper.calculate_branch_ratio(mock_blockchain), 1/3)
+            analyze_node.gasper.calculate_branch_ratio(mock_blockchain), 1/3)

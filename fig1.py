@@ -93,10 +93,10 @@ def plot_xyz_gradient(
             )
     color_map = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
     # plot
-    ax01 = ax[0].twinx()
-    ax01.scatter(to_plot[label_var_1], to_plot['threshold'], color='red')
-    ax01.axhline(y = 12, color = 'r', linestyle = '-', label='12')
-    ax01.set_ylabel('threshold')
+    # ax01 = ax[0].twinx()
+    # ax01.scatter(to_plot[label_var_1], to_plot['threshold'], color='red')
+    # ax01.axhline(y = 12, color = 'r', linestyle = '-', label='12')
+    # ax01.set_ylabel('threshold')
     ax[0].scatter(
             to_plot[label_var_1],
             to_plot["mainchain_rate"],
@@ -110,10 +110,10 @@ def plot_xyz_gradient(
     ax[0].set_title("(a)")
     ax[0].set_xscale(x_scale)
     
-    ax11 = ax[1].twinx()
-    ax11.scatter(to_plot[label_var_1], to_plot['threshold'], color='red')
-    ax11.axhline(y = 12, color = 'r', linestyle = '-', label='12')
-    ax11.set_ylabel('threshold')
+    # ax11 = ax[1].twinx()
+    # ax11.scatter(to_plot[label_var_1], to_plot['threshold'], color='red')
+    # ax11.axhline(y = 12, color = 'r', linestyle = '-', label='12')
+    # ax11.set_ylabel('threshold')
     ax[1].scatter(
             to_plot[label_var_1],
             to_plot["branch_ratio"],

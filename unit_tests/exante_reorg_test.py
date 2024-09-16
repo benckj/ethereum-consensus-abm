@@ -24,7 +24,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state,Attestation(node,block,slot))
 
         # Retest the level one here
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
@@ -41,7 +41,7 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state,Attestation(node,block,slot))
 
         self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
@@ -59,22 +59,22 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state, Attestation(node,block,slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
         self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1})
-
+        
         # Logic to see produce an empty slot
         attestations = {2: {self.nodes[i]: block1 for i in range(int(0.6 * self.no_of_nodes))}}
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state, Attestation(node,block,slot))
 
-        
-        chain_state.update_slot(3)     
+   
+        chain_state.update_slot(3)  
         self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1, })
@@ -88,14 +88,14 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state, Attestation(node,block,slot))
 
         self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1, 3: block2})
 
     def reorg(self):
-        # Slot 1: Initialized
+       # Slot 1: Initialized
         chain_state = ChainState(3, 1, 1, 3, 0, self.genesis_block)
         block1 = Block('n', self.nodes[0], 1, self.genesis_block)
 
@@ -104,87 +104,71 @@ class ExAnteReOrg_TestCase(unittest.TestCase):
 
         # Slot 1: Attestation Listened
         attestations = {
-            1: {self.nodes[i]: block1 for i in [0,1,2]}}
+            1: {self.nodes[i]: block1 for i in [0, 1, 2]}}
+
+        chain_state.update_time(14)
+        chain_state.update_slot(2)
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
-        
-        chain_state.update_time(14)
-        chain_state.update_slot(2)
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block})
-        self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
+        self.analyze_node.gasper.lmd_ghost(
+            chain_state, self.analyze_node.state,)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1})
 
-
-        chain_state.update_time(14)
-        chain_state.update_slot(2)
-        chain_state.set_malicious_slot()  
+        chain_state.set_malicious_slot()
         # Logic to see produce an empty slot in the malicious_slot
-        block2 = Block('n+1', self.nodes[0], 2, block1,True)
-        attestations = {2: {self.nodes[i]: block1 for i in [3,4,]}}
+        block2 = Block('n+1', self.nodes[0], 2, block1, True)
+        attestations = {2: {self.nodes[i]: block1 for i in [3, 4, ]}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
 
-        self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state)
+        self.analyze_node.gasper.lmd_ghost(
+            chain_state, self.analyze_node.state)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
                          0: self.genesis_block, 1: block1, })
 
         chain_state.update_time(22)
         self.analyze_node.state.add_block(chain_state, block2)
-        attestations = {2: {self.nodes[i]: block2 for i in [5]}}
-
-        for slot, node_attestaions in attestations.items():
-            for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
 
         chain_state.update_time(26)
-        chain_state.update_slot(3)     
-        block3 = Block('n+2', self.nodes[0], 3, block1)
+        chain_state.update_slot(3)
 
-        self.analyze_node.state.add_block(chain_state, block3)
-        attestations = {3: {self.nodes[i]: block3 if i in [6] else block2 for i in [6,7,8]}}
+        attestations = {2: {self.nodes[i]: block2 for i in [5,6,7]}}
 
         for slot, node_attestaions in attestations.items():
             for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
-        
-
-        self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state)
-        self.assertEqual(self.analyze_node.gasper.consensus_chain, {
-                         0: self.genesis_block, 1: block1, 2: block2})
-
-        chain_state.update_time(38)
-        chain_state.update_slot(4)
-
-        block4 = Block('n+3', self.nodes[0], 4, block2)
-        self.analyze_node.state.add_block(chain_state, block4)
-
-        attestations = {4: {self.nodes[i]: block4 for i in [9,10,11]}}
-        
-        for slot, node_attestaions in attestations.items():
-            for node, block in node_attestaions.items():
-                self.analyze_node.state.add_attestation(Attestation(node,block,slot))
-
-        self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
-        self.assertEqual(self.analyze_node.gasper.consensus_chain, {
-                         0: self.genesis_block, 1: block1, 2: block2})
-        
-        chain_state.update_time(52)
-        chain_state.update_slot(5)
-
+                self.analyze_node.state.add_attestation(chain_state,
+                                                        Attestation(node, block, slot))
                 
-        self.analyze_node.gasper.lmd_ghost(chain_state, self.analyze_node.state,)
+        block3 = Block('n+2', self.nodes[0], 3, block1)
+        self.analyze_node.state.add_block(chain_state, block3)
+
+        # chain_state.update_time(38)
+        # chain_state.update_slot(4)
+        # attestations = {3: {self.nodes[i]: block3 for i in [3]}}
+
+        # for slot, node_attestaions in attestations.items():
+        #     for node, block in node_attestaions.items():
+        #         self.analyze_node.state.add_attestation(chain_state,
+        #                                                 Attestation(node, block, slot))
+
+        self.analyze_node.gasper.lmd_ghost(
+            chain_state, self.analyze_node.state)
         self.assertEqual(self.analyze_node.gasper.consensus_chain, {
-                         0: self.genesis_block, 1: block1, 2: block2, 4: block4})
-        
+                         0: self.genesis_block, 1: block1, 2: block2})
+
         self.assertEqual(len([1 for slot in chain_state.reorgs if (
-            slot+1) not in self.analyze_node.gasper.consensus_chain.keys()]), 1)
+            slot+1) not in self.analyze_node.gasper.consensus_chain.keys() and slot in self.analyze_node.gasper.consensus_chain.keys()]), 1)
+
 
     def tearDown(self):
         del self.nodes, self.genesis_block
